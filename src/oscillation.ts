@@ -16,3 +16,21 @@ export function computePosition(oscillation: Oscillation, timeSeconds: number): 
     }
     return { x: oscillation.center.x, y: oscillation.center.y + offset };
 }
+
+export function pathStart(oscillation: Oscillation): Point {
+    if (oscillation.axis === "x") {
+        return { x: oscillation.center.x - oscillation.amplitude, y: oscillation.center.y }
+    }
+    else {
+        return { x: oscillation.center.x, y: oscillation.center.y - oscillation.amplitude }
+    }
+}
+
+export function pathEnd(oscillation: Oscillation): Point {
+    if (oscillation.axis === "x") {
+        return { x: oscillation.center.x + oscillation.amplitude, y: oscillation.center.y }
+    }
+    else {
+        return { x: oscillation.center.x, y: oscillation.center.y + oscillation.amplitude }
+    }
+}
