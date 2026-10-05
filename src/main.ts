@@ -1,5 +1,5 @@
 import "./style.css";
-import { createCanvasContext } from "./canvas";
+import { createSurface } from "./canvas";
 import { drawCircle } from "./draw";
 import { computePosition } from "./oscillation";
 import type { Body } from "./body";
@@ -13,7 +13,8 @@ function getRootElement(): HTMLDivElement {
 }
 
 const app = getRootElement();
-const ctx = createCanvasContext(app);
+const surface = createSurface(app)
+const ctx = surface.ctx
 
 const timeScale = 1;
 
@@ -23,7 +24,7 @@ const bodies: Body[] = [
 ];
 
 function renderFrame(timeMs: number): void {
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.clearRect(0, 0, surface.width, surface.height)
 
     const timeSeconds = timeMs / 1000 * timeScale;
     for (const body of bodies) {
