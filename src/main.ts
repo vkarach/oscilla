@@ -1,4 +1,6 @@
 import "./style.css";
+import { createCanvasContext } from "./canvas"
+import { draw } from "./draw";
 
 function getRootElement(): HTMLDivElement {
   const element = document.querySelector<HTMLDivElement>("#app");
@@ -9,10 +11,6 @@ function getRootElement(): HTMLDivElement {
 }
 
 const app = getRootElement();
+const ctx = createCanvasContext(app)
 
-function frame(timeMs: number): void {
-  app.textContent = `Oscilla: ${(timeMs / 1000).toFixed(1)} s`;
-  requestAnimationFrame(frame);
-}
-
-requestAnimationFrame(frame);
+draw(ctx);
