@@ -15,10 +15,11 @@ function getRootElement(): HTMLDivElement {
 }
 
 const app = getRootElement();
-const surface = createSurface(app)
-const ctx = surface.ctx
+const trailCtx = createSurface(app).ctx;
+const surface = createSurface(app);
+const ctx = surface.ctx;
 
-const timeScale = 1;
+const timeScale = 0.7;
 
 const horizontal: Oscillation = { center: { x: 350, y: 200 }, axis: "x", amplitude: 100, frequencyHz: 0.5 }
 const vertical: Oscillation   = { center: { x: 200, y: 350 }, axis: "y", amplitude: 100, frequencyHz: 1 }
@@ -31,7 +32,7 @@ const bodies: Body[] = [
 const projection: Projection = { 
     horizontal: horizontal,
     vertical: vertical,  
-    circle: { radius: 10, color: "#c74d4d" }
+    circle: { radius: 5, color: "#c74d4d" }
 }
 
 function renderFrame(timeMs: number): void {
@@ -43,8 +44,9 @@ function renderFrame(timeMs: number): void {
         drawPath(ctx, body.oscillation)
         drawCircle(ctx, body.circle, pos);
     }
-
-    drawCircle(ctx, projection.circle, projectionPoint(projection, timeSeconds))
+    
+    drawCircle(trailCtx, projection.circle, projectionPoint(projection, timeSeconds))
+    drawCircle(ctx, { radius: 10, color: "#000"}, projectionPoint(projection, timeSeconds))
 
     requestAnimationFrame(renderFrame);
 }
