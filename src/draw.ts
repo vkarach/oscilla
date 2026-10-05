@@ -1,7 +1,9 @@
-export function draw(ctx: CanvasRenderingContext2D): void {
-  ctx.fillStyle = "rgb(200 0 0)";
-  ctx.fillRect(10, 10, 50, 50);  
+import type { Circle } from "./circle";
+import type { Point } from "./geometry";
 
-  ctx.fillStyle = "rgb(0 0 200 / 50%)";
-  ctx.fillRect(30, 30, 50, 50);
+export function drawCircle(ctx: CanvasRenderingContext2D, circle: Circle, point: Point): void {
+    ctx.fillStyle = circle.color;
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, circle.radius, 0, 2 * Math.PI);
+    ctx.fill();
 }

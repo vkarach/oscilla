@@ -1,12 +1,16 @@
 html,
 body,
 #app {
-  margin: 0;
-  height: 100%;
+    margin: 0;
+    height: 100%;
+}
+
+#app canvas {
+    background: #ffffff3b;
 }
 
 body {
-  background: #111;
-  color: #eee;
-  font-family: system-ui, sans-serif;
+    background: #111;
+    color: #eee;
+    font-family: system-ui, sans-serif;
 }
