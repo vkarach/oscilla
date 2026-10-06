@@ -3,6 +3,7 @@ import { createSurface } from "./canvas";
 import { drawCircle, drawPath } from "./draw";
 import { computePosition, type Oscillation } from "./oscillation";
 import { projectionPoint, type Projection } from "./projection"
+import { createControls } from "./controls"
 
 import type { Body } from "./body";
 
@@ -18,6 +19,14 @@ const app = getRootElement();
 const trailCtx = createSurface(app).ctx;
 const surface = createSurface(app);
 const ctx = surface.ctx;
+
+let trailEnabled = true;
+createControls(app, {
+    onToggleTrail: () => {
+        trailEnabled = !trailEnabled;
+        trailCtx.canvas.hidden = !trailEnabled;
+    },
+});
 
 const timeScale = 0.7;
 

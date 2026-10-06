@@ -22,3 +22,9 @@ body {
     color: #eee;
     font-family: system-ui, sans-serif;
 }
+
+.controls {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+}
