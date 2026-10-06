@@ -1,8 +1,8 @@
 import "./style.css";
 import { createSurface } from "./canvas";
-import { drawCircle, drawPath } from "./draw";
+import { drawCircle, drawPath, drawTrailSegment } from "./draw";
 import { computePosition, type Oscillation } from "./oscillation";
-import { projectionPoint, type Projection } from "./projection"
+import { projectionPoint, trailTimeStep, type Projection } from "./projection"
 import { createControls } from "./controls"
 
 import type { Body } from "./body";
@@ -28,10 +28,10 @@ createControls(app, {
     },
 });
 
-const timeScale = 0.7;
+const timeScale = 0.5;
 
-const horizontal: Oscillation = { center: { x: 350, y: 200 }, axis: "x", amplitude: 100, frequencyHz: 0.5 }
-const vertical: Oscillation   = { center: { x: 200, y: 350 }, axis: "y", amplitude: 100, frequencyHz: 1 }
+const horizontal: Oscillation = { center: { x: 350, y: 200 }, axis: "x", amplitude: 100, frequencyHz: 2 }
+const vertical: Oscillation   = { center: { x: 200, y: 350 }, axis: "y", amplitude: 100, frequencyHz: 3 }
 
 const bodies: Body[] = [
     { oscillation: horizontal, circle: { radius: 10, color: "#000" } },
@@ -41,9 +41,11 @@ const bodies: Body[] = [
 const projection: Projection = { 
     horizontal: horizontal,
     vertical: vertical,  
-    circle: { radius: 5, color: "#c74d4d" }
+    style: { lineWidth: 4, color: "#c74d4d" }
 }
+const dt = trailTimeStep(projection, 1.5)
 
+let prevTime = 0
 function renderFrame(timeMs: number): void {
     ctx.clearRect(0, 0, surface.width, surface.height)
 
@@ -54,9 +56,10 @@ function renderFrame(timeMs: number): void {
         drawCircle(ctx, body.circle, pos);
     }
     
-    drawCircle(trailCtx, projection.circle, projectionPoint(projection, timeSeconds))
+    if (trailEnabled) drawTrailSegment(trailCtx, projection, prevTime, timeSeconds, dt)
     drawCircle(ctx, { radius: 10, color: "#000"}, projectionPoint(projection, timeSeconds))
 
+    prevTime = timeSeconds
     requestAnimationFrame(renderFrame);
 }
 requestAnimationFrame(renderFrame);
