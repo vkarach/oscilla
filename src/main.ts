@@ -2,7 +2,7 @@ import "./style.css";
 import { createSurface } from "./canvas";
 import { drawCircle, drawPath, drawTrailSegment } from "./draw";
 import { computePosition, type Oscillation } from "./oscillation";
-import { projectionPoint, trailTimeStep, type Projection } from "./projection"
+import { projectionPoint, trailPeriod, trailTimeStep, type Projection } from "./projection"
 import { createControls } from "./controls"
 
 import type { Body } from "./body";
@@ -21,9 +21,12 @@ const surface = createSurface(app);
 const ctx = surface.ctx;
 
 let trailEnabled = true;
+let trailJustEnabled = true;
+let trailsStartSec = 0;
 createControls(app, {
     onToggleTrail: () => {
         trailEnabled = !trailEnabled;
+        trailJustEnabled = true
         trailCtx.canvas.hidden = !trailEnabled;
     },
 });
@@ -43,9 +46,11 @@ const projection: Projection = {
     vertical: vertical,  
     style: { lineWidth: 4, color: "#c74d4d" }
 }
-const dt = trailTimeStep(projection, 1.5)
 
-let prevTime = 0
+const dt = trailTimeStep(projection, 1.5)
+const trailPeriodSec = trailPeriod(projection)
+let trailComplete = false
+
 function renderFrame(timeMs: number): void {
     ctx.clearRect(0, 0, surface.width, surface.height)
 
@@ -56,10 +61,19 @@ function renderFrame(timeMs: number): void {
         drawCircle(ctx, body.circle, pos);
     }
     
-    if (trailEnabled) drawTrailSegment(trailCtx, projection, prevTime, timeSeconds, dt)
+    if (trailJustEnabled) {
+        trailsStartSec = timeSeconds
+        trailComplete = false
+        trailJustEnabled = false
+    }
+    if (trailEnabled && !trailComplete) {
+        trailCtx.clearRect(0, 0, surface.width, surface.height)
+        const endT = Math.min(timeSeconds, trailsStartSec + trailPeriodSec)
+        drawTrailSegment(trailCtx, projection, trailsStartSec, endT, dt)
+        trailComplete = endT < timeSeconds
+    }
     drawCircle(ctx, { radius: 10, color: "#000"}, projectionPoint(projection, timeSeconds))
 
-    prevTime = timeSeconds
     requestAnimationFrame(renderFrame);
 }
 requestAnimationFrame(renderFrame);
