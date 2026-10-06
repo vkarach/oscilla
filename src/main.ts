@@ -1,10 +1,11 @@
 import "./style.css";
 import { createSurface } from "./canvas";
-import { drawCircle, drawPath, drawTrailSegment } from "./draw";
+import { drawCircle, drawPath } from "./draw";
 import { computePosition } from "./oscillation";
-import { projectionPoint, trailPeriod, trailTimeStep } from "./projection"
+import { projectionPoint } from "./projection"
 import { createControls } from "./controls"
 import { createScene } from "./scene";
+import { createTrail } from "./trail";
 
 function getRootElement(): HTMLDivElement {
     const element = document.querySelector<HTMLDivElement>("#app");
@@ -15,49 +16,25 @@ function getRootElement(): HTMLDivElement {
 }
 
 const app = getRootElement();
-const trailCtx = createSurface(app).ctx;
-const surface = createSurface(app);
-const ctx = surface.ctx;
-
 const scene = createScene()
+const trail = createTrail(app, scene.projection)
+const surface = createSurface(app);
 
-let trailEnabled = true;
-let trailJustEnabled = true;
-let trailsStartSec = 0;
-createControls(app, {
-    onToggleTrail: () => {
-        trailEnabled = !trailEnabled;
-        trailJustEnabled = true
-        trailCtx.canvas.hidden = !trailEnabled;
-    },
-});
-
-const dt = trailTimeStep(scene.projection, 1.5)
-const trailPeriodSec = trailPeriod(scene.projection)
-let trailComplete = false
+createControls(app, { onToggleTrail: trail.toggle })
 
 function renderFrame(timeMs: number): void {
-    ctx.clearRect(0, 0, surface.width, surface.height)
+    surface.ctx.clearRect(0, 0, surface.width, surface.height)
 
     const timeSeconds = timeMs / 1000 * scene.timeScale;
     for (const body of scene.bodies) {
         const pos = computePosition(body.oscillation, timeSeconds);
-        drawPath(ctx, body.oscillation)
-        drawCircle(ctx, body.circle, pos);
+        drawPath(surface.ctx, body.oscillation)
+        drawCircle(surface.ctx, body.circle, pos);
     }
     
-    if (trailJustEnabled) {
-        trailsStartSec = timeSeconds
-        trailComplete = false
-        trailJustEnabled = false
-    }
-    if (trailEnabled && !trailComplete) {
-        trailCtx.clearRect(0, 0, surface.width, surface.height)
-        const endT = Math.min(timeSeconds, trailsStartSec + trailPeriodSec)
-        drawTrailSegment(trailCtx, scene.projection, trailsStartSec, endT, dt)
-        trailComplete = endT < timeSeconds
-    }
-    drawCircle(ctx, { radius: 10, color: "#000"}, projectionPoint(scene.projection, timeSeconds))
+    trail.render(timeSeconds)
+
+    drawCircle(surface.ctx, { radius: 10, color: "#000"}, projectionPoint(scene.projection, timeSeconds))
 
     requestAnimationFrame(renderFrame);
 }
