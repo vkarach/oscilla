@@ -2,6 +2,7 @@ export interface Surface {
     ctx: CanvasRenderingContext2D;
     width: number;
     height: number;
+    onResize(callback: () => void): void;
 }
 
 export function createSurface(parent: HTMLElement): Surface {
@@ -11,8 +12,14 @@ export function createSurface(parent: HTMLElement): Surface {
     if (!ctx) {
         throw new Error("Can't get canvas.getContext(\"2d\")");
     }
-    const surface: Surface = { ctx, width: 0, height: 0 };
-    const observer = new ResizeObserver(([entry]) => {
+    const resizeListeners: (() => void)[] = [];
+    const surface: Surface = {
+        ctx,
+        width: 0,
+        height: 0,
+        onResize(callback) { resizeListeners.push(callback) },
+    };
+    const handleResize = ([entry]: ResizeObserverEntry[]) => {
         const cssSize = entry.contentBoxSize[0];
         const deviceSize = entry.devicePixelContentBoxSize?.[0];
         canvas.width = deviceSize?.inlineSize ?? Math.round(cssSize.inlineSize * devicePixelRatio);
@@ -20,11 +27,14 @@ export function createSurface(parent: HTMLElement): Surface {
         surface.width = cssSize.inlineSize;
         surface.height = cssSize.blockSize;
         ctx.setTransform(canvas.width / surface.width, 0, 0, canvas.height / surface.height, 0, 0);
-    });
+        for (const listener of resizeListeners) listener();
+    };
+    // Zoom changes only the CSS size and a DPI change only the device size, so watch both.
+    new ResizeObserver(handleResize).observe(canvas, { box: "content-box" });
     try {
-        observer.observe(canvas, { box: "device-pixel-content-box" });
+        new ResizeObserver(handleResize).observe(canvas, { box: "device-pixel-content-box" });
     } catch {
-        observer.observe(canvas, { box: "content-box" });
+        // unsupported box: the content-box observer still covers resizes and zoom
     }
     return surface;
 }
