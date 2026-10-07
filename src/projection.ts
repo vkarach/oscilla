@@ -1,3 +1,4 @@
+import type { Circle } from "./circle";
 import type { Point } from "./geometry";
 import { computePosition, type Oscillation } from "./oscillation";
 
@@ -9,6 +10,7 @@ export interface ProjectionStyle {
 export interface Projection {
     horizontal: Oscillation;
     vertical: Oscillation;
+    marker: Circle
     style: ProjectionStyle;
 }
 

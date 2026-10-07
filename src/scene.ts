@@ -19,10 +19,11 @@ export function createScene(): Scene {
         { oscillation: vertical,   circle: { radius: 10, color: "#000" } },
     ];
     
-    const projection: Projection = { 
+    const projection: Projection = {
         horizontal: horizontal,
         vertical: vertical,  
-        style: { lineWidth: 4, color: "#c74d4d" }
+        style: { lineWidth: 4, color: "#c74d4d" },
+        marker: { radius: 10, color: "#000"}
     }
 
     return { timeScale, bodies, projection }

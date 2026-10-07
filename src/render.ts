@@ -1,17 +1,31 @@
+import type { Surface } from "./canvas";
 import type { Circle } from "./circle";
 import type { Point } from "./geometry";
 
-import { pathStart, pathEnd, type Oscillation} from "./oscillation"
+import { pathStart, pathEnd, type Oscillation, computePosition} from "./oscillation"
 import { projectionPoint, type Projection } from "./projection";
+import type { Scene } from "./scene";
 
-export function drawCircle(ctx: CanvasRenderingContext2D, circle: Circle, point: Point): void {
+
+export function renderScene(surface: Surface, scene: Scene, timeSeconds: number): void {
+    surface.ctx.clearRect(0, 0, surface.width, surface.height)
+    for (const body of scene.bodies) {
+        const pos = computePosition(body.oscillation, timeSeconds);
+        renderPath(surface.ctx, body.oscillation)
+        renderCircle(surface.ctx, body.circle, pos);
+    }
+    renderCircle(surface.ctx, scene.projection.marker, projectionPoint(scene.projection, timeSeconds))
+}
+
+
+function renderCircle(ctx: CanvasRenderingContext2D, circle: Circle, point: Point): void {
     ctx.fillStyle = circle.color;
     ctx.beginPath();
     ctx.arc(point.x, point.y, circle.radius, 0, 2 * Math.PI);
     ctx.fill();
 }
 
-export function drawPath(ctx: CanvasRenderingContext2D, oscillation: Oscillation): void {
+function renderPath(ctx: CanvasRenderingContext2D, oscillation: Oscillation): void {
     ctx.strokeStyle = "#c74d4d"
     ctx.lineWidth = 6;
     ctx.lineCap = "round"
@@ -27,7 +41,7 @@ export function drawPath(ctx: CanvasRenderingContext2D, oscillation: Oscillation
     ctx.stroke();
 }
 
-export function drawTrailSegment(ctx: CanvasRenderingContext2D, projection: Projection, fromT: number, toT: number, dt: number) {
+export function renderTrailSegment(ctx: CanvasRenderingContext2D, projection: Projection, fromT: number, toT: number, dt: number) {
     ctx.strokeStyle = projection.style.color
     ctx.lineWidth = projection.style.lineWidth
     ctx.lineCap = "round"

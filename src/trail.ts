@@ -1,5 +1,5 @@
 import { createSurface } from "./canvas";
-import { drawTrailSegment } from "./draw";
+import { renderTrailSegment } from "./render";
 import { trailPeriod, trailTimeStep, type Projection } from "./projection";
 
 export interface Trail {
@@ -31,7 +31,7 @@ export function createTrail(parent: HTMLElement, projection: Projection): Trail 
         if (enabled && !complete) {
             surface.ctx.clearRect(0, 0, surface.width, surface.height)
             const endT = Math.min(timeSeconds, startSec + periodSec)
-            drawTrailSegment(surface.ctx, projection, startSec, endT, renderDt)
+            renderTrailSegment(surface.ctx, projection, startSec, endT, renderDt)
             complete = endT < timeSeconds
         }
     }

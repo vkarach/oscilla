@@ -1,8 +1,6 @@
 import "./style.css";
 import { createSurface } from "./canvas";
-import { drawCircle, drawPath } from "./draw";
-import { computePosition } from "./oscillation";
-import { projectionPoint } from "./projection"
+import {renderScene } from "./render";
 import { createControls } from "./controls"
 import { createScene } from "./scene";
 import { createTrail } from "./trail";
@@ -23,18 +21,10 @@ const surface = createSurface(app);
 createControls(app, { onToggleTrail: trail.toggle })
 
 function renderFrame(timeMs: number): void {
-    surface.ctx.clearRect(0, 0, surface.width, surface.height)
-
     const timeSeconds = timeMs / 1000 * scene.timeScale;
-    for (const body of scene.bodies) {
-        const pos = computePosition(body.oscillation, timeSeconds);
-        drawPath(surface.ctx, body.oscillation)
-        drawCircle(surface.ctx, body.circle, pos);
-    }
-    
-    trail.render(timeSeconds)
 
-    drawCircle(surface.ctx, { radius: 10, color: "#000"}, projectionPoint(scene.projection, timeSeconds))
+    renderScene(surface, scene, timeSeconds)    
+    trail.render(timeSeconds)
 
     requestAnimationFrame(renderFrame);
 }
