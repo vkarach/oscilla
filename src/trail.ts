@@ -13,8 +13,8 @@ export function createTrail(parent: HTMLElement, projection: Projection): Trail 
     let justEnabled = true
     let complete = false
     let startSec = 0
-    let periodSec = trailPeriod(projection)
-    let renderDt = trailTimeStep(projection, 1.5)
+    const periodSec = trailPeriod(projection)
+    const renderDt = trailTimeStep(projection, 1.5)
     surface.onResize(() => { complete = false })
 
     function toggle(): void {
