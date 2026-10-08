@@ -1,17 +1,24 @@
 export interface ControlHandlers {
-    onToggleTrail: () => void;
-    onTimeScaleChange: (timeScale: number) => void;
+    onToggleTrail: () => void
+    onToggleSound: () => void
+    onTimeScaleChange: (timeScale: number) => void
 }
 
 export function createControls(parent: HTMLElement, handlers: ControlHandlers, timeScale: number) {
-    const controls = document.createElement("div");
-    controls.className = "controls";
-    parent.append(controls);
+    const controls = document.createElement("div")
+    controls.className = "controls"
+    parent.append(controls)
 
-    const button = document.createElement("button");
-    button.textContent = "trail";
-    button.addEventListener("click", handlers.onToggleTrail);
-    controls.append(button);
+    const trailToggleBtn = document.createElement("button");
+    trailToggleBtn.textContent = "trail"
+    trailToggleBtn.addEventListener("click", handlers.onToggleTrail);
+    controls.append(trailToggleBtn)
+
+    const soundToggleBtn = document.createElement("button");
+    soundToggleBtn.textContent = "sound"
+    soundToggleBtn.addEventListener("click", handlers.onToggleSound);
+    controls.append(soundToggleBtn)
+
 
     const slider = document.createElement("input")
     slider.type = "range"

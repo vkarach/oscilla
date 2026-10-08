@@ -1,11 +1,18 @@
 export interface Clock {
+    now(): number
     tick(timeMs: number): number
+    getTimeScale(): number
     setTimeScale(scale: number): void
+    onTimeScaleChange(callback: (timeScale: number) => void): void
 }
 
 export function createClock(timeScale: number): Clock {
     let simSeconds = 0
     let lastMs: number | undefined = undefined
+
+    function now(): number {
+        return simSeconds
+    }
 
     function tick(timeMs: number): number {
         let dtReal = 0
@@ -17,9 +24,21 @@ export function createClock(timeScale: number): Clock {
         return simSeconds
     }
 
-    function setTimeScale(scale: number): void {
-        timeScale = scale
+    function getTimeScale() {
+        return timeScale
     }
 
-    return { tick, setTimeScale }
+    function setTimeScale(scale: number): void {
+        timeScale = scale
+        for (const callback of timeScaleListeners) {
+            callback(timeScale)
+        }
+    }
+
+    const timeScaleListeners: ((timeScale: number) => void)[] = []
+    function onTimeScaleChange(callback: (timeScale: number) => void) {
+        timeScaleListeners.push(callback)
+    }
+
+    return { getTimeScale, onTimeScaleChange, now, tick, setTimeScale }
 }
