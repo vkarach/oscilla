@@ -16,10 +16,10 @@ export function createSound(clock: Clock, projection: Projection): Sound {
     
     let playing = false
     
-    let nodeReady: Promise<AudioWorkletNode> | undefined
+    let nodeReady: Promise<AudioWorkletNode[]> | undefined
 
     async function toggle() {
-        nodeReady ??= createClickNode(ctx, gain, clock, projection.horizontal.frequencyHz)
+        nodeReady ??= createClickNodes(ctx, gain, clock, projection)        
         await nodeReady
 
         await ctx.resume()
@@ -30,8 +30,15 @@ export function createSound(clock: Clock, projection: Projection): Sound {
     return { toggle };
 }
 
-async function createClickNode(ctx: AudioContext, gain: GainNode, clock: Clock, frequencyHz: number): Promise<AudioWorkletNode> {
+async function createClickNodes(ctx: AudioContext, gain: GainNode, clock: Clock, projection: Projection): Promise<AudioWorkletNode[]> {
     await ctx.audioWorklet.addModule(clickUrl)
+    const nodes: AudioWorkletNode[] = []
+    nodes.push(createClickNode(ctx, gain, clock, projection.horizontal.frequencyHz))
+    nodes.push(createClickNode(ctx, gain, clock, projection.vertical.frequencyHz))
+    return nodes
+}
+
+function createClickNode(ctx: AudioContext, gain: GainNode, clock: Clock, frequencyHz: number): AudioWorkletNode {
     const options: ClickOptions = { frequencyHz }
     const node = new AudioWorkletNode(ctx, "click", { processorOptions: options })
     node.connect(gain)
@@ -43,6 +50,7 @@ async function createClickNode(ctx: AudioContext, gain: GainNode, clock: Clock, 
     })
     return node
 }
+
 
 function postTiming(node: AudioWorkletNode, clock: Clock) {
     node.port.postMessage({ timeScale: clock.getTimeScale(), simSeconds: clock.now() })

@@ -8,8 +8,11 @@ class ClickProcessor extends AudioWorkletProcessor {
     private frequencyHz = 2
 
     private env = 0
-    private decay = Math.exp(-1 / (sampleRate * 0.003)) 
+    private decay = Math.exp(-1 / (sampleRate * 0.001)) 
     
+    private samplesSinceClick = 0
+    private clickHz = 2000
+
     constructor(options: { processorOptions: ClickOptions }) {
         super()
         this.frequencyHz = options.processorOptions.frequencyHz
@@ -28,12 +31,14 @@ class ClickProcessor extends AudioWorkletProcessor {
             
             const simCrossing = Math.floor(2 * this.frequencyHz * this.simSeconds)
             if (simCrossing !== this.lastCrossing) {
+                this.samplesSinceClick = 0
                 this.env = 1
             }
             this.lastCrossing = simCrossing
             
-            channel[i] = (Math.random() * 2 - 1 ) * this.env
+            channel[i] = this.env * Math.sin(2*Math.PI * this.clickHz * this.samplesSinceClick / sampleRate)
             this.env *= this.decay
+            this.samplesSinceClick++
         }
         return true
     }
