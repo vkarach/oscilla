@@ -18,19 +18,32 @@ export function createSound(clock: Clock, projection: Projection): Sound {
     let playing = false
     
     let nodeReady: Promise<AudioWorkletNode[]> | undefined
+    const volume = 2
+    const fadeSeconds = 0.02
 
     async function toggle() {
         nodeReady ??= createClickNodes(ctx, gain, clock, projection)
         const nodes = await nodeReady
 
-        await ctx.resume()
-        // The audio clock only maps to real time once the context runs.
-        for (const node of nodes) postTiming(node, ctx, clock)
         playing = !playing
-        gain.gain.setTargetAtTime(playing ? 2 : 0, ctx.currentTime, 0.02)
+        if (playing) {
+            await ctx.resume()
+            // The audio clock only maps to real time once the context runs.
+            for (const node of nodes) postTiming(node, ctx, clock)
+            gain.gain.setTargetAtTime(volume, ctx.currentTime, fadeSeconds)
+        } 
+        else {
+            gain.gain.setTargetAtTime(0, ctx.currentTime, fadeSeconds)
+            await delay(fadeSeconds * 5)
+            if (!playing) await ctx.suspend()
+        }
     }
 
     return { toggle };
+}
+
+function delay(seconds: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, seconds * 1000))
 }
 
 async function createClickNodes(ctx: AudioContext, gain: GainNode, clock: Clock, projection: Projection): Promise<AudioWorkletNode[]> {
