@@ -1,6 +1,6 @@
 import clickUrl from "./worklets/click.ts?worker&url"
 
-import type { ClickOptions } from "./worklets/clickOptions"
+import type { ClickOptions, ClickTiming } from "./worklets/clickOptions"
 import type { Projection } from "./projection";
 import type { Clock } from "./clock";
 
@@ -10,6 +10,7 @@ export interface Sound {
 
 export function createSound(clock: Clock, projection: Projection): Sound {
     const ctx = new AudioContext()
+    
     const gain = ctx.createGain()
     gain.gain.value = 0
     gain.connect(ctx.destination)
@@ -19,12 +20,14 @@ export function createSound(clock: Clock, projection: Projection): Sound {
     let nodeReady: Promise<AudioWorkletNode[]> | undefined
 
     async function toggle() {
-        nodeReady ??= createClickNodes(ctx, gain, clock, projection)        
-        await nodeReady
+        nodeReady ??= createClickNodes(ctx, gain, clock, projection)
+        const nodes = await nodeReady
 
         await ctx.resume()
+        // The audio clock only maps to real time once the context runs.
+        for (const node of nodes) postTiming(node, ctx, clock)
         playing = !playing
-        gain.gain.setTargetAtTime(playing ? 0.1 : 0, ctx.currentTime, 0.02)
+        gain.gain.setTargetAtTime(playing ? 2 : 0, ctx.currentTime, 0.02)
     }
 
     return { toggle };
@@ -41,17 +44,34 @@ async function createClickNodes(ctx: AudioContext, gain: GainNode, clock: Clock,
 function createClickNode(ctx: AudioContext, gain: GainNode, clock: Clock, frequencyHz: number): AudioWorkletNode {
     const options: ClickOptions = { frequencyHz }
     const node = new AudioWorkletNode(ctx, "click", { processorOptions: options })
-    node.connect(gain)
 
-    postTiming(node, clock)
+    const ringHz = 1500
+    const ringQ = 0.7
 
-    clock.onTimeScaleChange(() => {
-        postTiming(node, clock)
+    const filter = ctx.createBiquadFilter()
+    filter.type = "lowpass"
+    filter.frequency.value = ringHz
+    filter.Q.value = ringQ
+    node.connect(filter)
+    filter.connect(gain)
+
+    clock.onAnchorChange(() => {
+        postTiming(node, ctx, clock)
     })
     return node
 }
 
+function postTiming(node: AudioWorkletNode, ctx: AudioContext, clock: Clock) {
+    const { simSeconds, timeScale, realMs } = clock.anchor()
+    const timing: ClickTiming = { simSeconds, timeScale, audioTime: audioTimeAt(ctx, realMs) }
+    node.port.postMessage(timing)
+}
 
-function postTiming(node: AudioWorkletNode, clock: Clock) {
-    node.port.postMessage({ timeScale: clock.getTimeScale(), simSeconds: clock.now() })
+// Maps a performance.now() instant to the context time of the sample heard at that instant.
+function audioTimeAt(ctx: AudioContext, realMs: number): number {
+    const { contextTime, performanceTime } = ctx.getOutputTimestamp()
+    if (!contextTime || !performanceTime) {
+        return ctx.currentTime + (realMs - performance.now()) / 1000
+    }
+    return contextTime + (realMs - performanceTime) / 1000
 }

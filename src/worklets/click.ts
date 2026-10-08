@@ -1,44 +1,41 @@
-import type { ClickOptions } from "./clickOptions"
+import type { ClickOptions, ClickTiming } from "./clickOptions"
 
 class ClickProcessor extends AudioWorkletProcessor {
-    private simSeconds = 0
-    private lastCrossing = 0
-    
-    private timeScale = 0 
-    private frequencyHz = 2
-
-    private env = 0
-    private decay = Math.exp(-1 / (sampleRate * 0.001)) 
-    
-    private samplesSinceClick = 0
-    private clickHz = 2000
+    private frequencyHz: number
+    private timing: ClickTiming = { simSeconds: 0, timeScale: 0, audioTime: 0 }
+    private lastPhase = 0
+    private carry = 0
 
     constructor(options: { processorOptions: ClickOptions }) {
         super()
         this.frequencyHz = options.processorOptions.frequencyHz
-        this.port.onmessage = (event) => { 
-            this.timeScale = event.data.timeScale
-            this.simSeconds = event.data.simSeconds
-            this.lastCrossing = Math.floor(2 * this.frequencyHz * this.simSeconds)
+        this.port.onmessage = (event: MessageEvent<ClickTiming>) => {
+            this.timing = event.data
+            this.lastPhase = this.phaseAt(currentTime)
         }
     }
 
+    private phaseAt(audioTime: number): number {
+        const { simSeconds, timeScale, audioTime: anchorTime } = this.timing
+        return 2 * this.frequencyHz * (simSeconds + (audioTime - anchorTime) * timeScale)
+    }
+
     process(_inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
-        
         const channel = outputs[0][0]
         for (let i = 0; i < channel.length; i++) {
-            this.simSeconds += this.timeScale / sampleRate
-            
-            const simCrossing = Math.floor(2 * this.frequencyHz * this.simSeconds)
-            if (simCrossing !== this.lastCrossing) {
-                this.samplesSinceClick = 0
-                this.env = 1
+            const phase = this.phaseAt(currentTime + i / sampleRate)
+
+            let out = this.carry
+            this.carry = 0
+            const crossing = Math.floor(phase)
+            if (crossing !== Math.floor(this.lastPhase)) {
+                // Split the impulse across two samples so its timing is not snapped to the sample grid.
+                const samplesSinceCrossing = Math.min(1, (phase - crossing) / (phase - this.lastPhase))
+                out += samplesSinceCrossing
+                this.carry = 1 - samplesSinceCrossing
             }
-            this.lastCrossing = simCrossing
-            
-            channel[i] = this.env * Math.sin(2*Math.PI * this.clickHz * this.samplesSinceClick / sampleRate)
-            this.env *= this.decay
-            this.samplesSinceClick++
+            this.lastPhase = phase
+            channel[i] = out
         }
         return true
     }
