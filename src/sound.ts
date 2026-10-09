@@ -66,10 +66,22 @@ function createClickNode(ctx: AudioContext, gain: GainNode, clock: Clock, freque
     filter.frequency.value = ringHz
     filter.Q.value = ringQ
     node.connect(filter)
-    filter.connect(gain)
+    
+    const rateGain = ctx.createGain()
+    rateGain.gain.value = gainMultiplier(frequencyHz, clock.anchor().timeScale)
+    filter.connect(rateGain)
+    rateGain.connect(gain)
 
     clock.onAnchorChange(() => {
+        const { timeScale } = clock.anchor()
         postTiming(node, ctx, clock)
+        if (timeScale !== 0) {
+            const multiplier = gainMultiplier(frequencyHz, timeScale)
+            rateGain.gain.setTargetAtTime(multiplier, ctx.currentTime, 0.02)
+        }
+        else {
+            rateGain.gain.value = 0
+        }
     })
     return node
 }
@@ -87,4 +99,12 @@ function audioTimeAt(ctx: AudioContext, realMs: number): number {
         return ctx.currentTime + (realMs - performance.now()) / 1000
     }
     return contextTime + (realMs - performanceTime) / 1000
+}
+
+
+function gainMultiplier(frequencyHz: number, timeScale: number): number {
+    const crossingsPerPeriod = 2
+    const fuseHz = 20
+    const clickHz = crossingsPerPeriod * frequencyHz * timeScale
+    return Math.min(1, Math.sqrt(fuseHz / clickHz))
 }
