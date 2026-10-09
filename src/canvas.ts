@@ -5,13 +5,18 @@ export interface Surface {
     onResize(callback: () => void): void;
 }
 
-export function createSurface(parent: HTMLElement): Surface {
-    const canvas = document.createElement("canvas");
-    parent.append(canvas);
+export function context2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
     const ctx = canvas.getContext("2d");
     if (!ctx) {
         throw new Error("Can't get canvas.getContext(\"2d\")");
     }
+    return ctx;
+}
+
+export function createSurface(parent: HTMLElement): Surface {
+    const canvas = document.createElement("canvas");
+    parent.append(canvas);
+    const ctx = context2d(canvas);
     const resizeListeners: (() => void)[] = [];
     const surface: Surface = {
         ctx,

@@ -1,6 +1,6 @@
 import "./style.css";
 import { createSurface } from "./canvas";
-import { renderScene } from "./render";
+import { createRenderer } from "./render";
 import { createControls } from "./controls"
 import { createScene } from "./scene";
 import { createTrail } from "./trail";
@@ -22,6 +22,7 @@ const theme = createTheme()
 app.style.background = theme.background
 const trail = createTrail(app, scene.projection, theme)
 const surface = createSurface(app);
+const renderer = createRenderer(surface)
 const clock = createClock(scene.timeScale)
 const sound = createSound(clock, scene.projection)
 
@@ -35,11 +36,17 @@ createControls(
 )
 
 
+let lastSimSeconds = 0
 function renderFrame(timeMs: number): void {
-    const timeSeconds = clock.tick(timeMs)
+    const simSeconds = clock.tick(timeMs)
 
-    renderScene(surface, scene, theme, timeSeconds, clock.anchor().timeScale)
-    trail.render(timeSeconds)
+    renderer.render(scene, theme, {
+        simSeconds,
+        timeScale: clock.anchor().timeScale,
+        frameSimSeconds: simSeconds - lastSimSeconds,
+    })
+    trail.render(simSeconds)
+    lastSimSeconds = simSeconds
 
     requestAnimationFrame(renderFrame);
 }

@@ -26,23 +26,36 @@ export interface GuideStyle {
     width: number
 }
 
+export type Rgb = readonly [number, number, number]
+
+export interface BeamStyle {
+    color: Rgb
+    width: number
+    haloColor: Rgb
+    haloAlpha: number
+    haloWidth: number
+    // Real seconds for the phosphor glow to fade to 1/e.
+    decaySeconds: number
+    // Real beam speed in px/s at which a single pass reaches unit brightness before saturation.
+    gain: number
+}
+
 export interface BodyStyle {
     path: LineStyle
     tick: LineStyle
     ball: DotStyle
-    tail: LineStyle
-    // Real seconds of motion the tail spans, so it grows with speed.
-    tailSeconds: number
+    beam: BeamStyle
 }
 
 export interface MarkerStyle {
     dot: DotStyle
-    tail: LineStyle
-    tailSeconds: number
+    beam: BeamStyle
 }
 
 export interface Theme {
     background: string
+    // Blur radius in px of the shared halo layer.
+    bloomBlur: number
     guide: GuideStyle
     trail: GlowStyle
     bodies: Record<Oscillation["axis"], BodyStyle>
@@ -52,6 +65,7 @@ export interface Theme {
 export function createTheme(): Theme {
     return {
         background: "#0d0d10",
+        bloomBlur: 4,
         guide: {
             color: "rgba(255, 150, 110, 0.45)",
             fadeColor: "rgba(255, 150, 110, 0)",
@@ -74,8 +88,7 @@ export function createTheme(): Theme {
                     radius: 7,
                     glowRadius: 26,
                 },
-                tail: { color: "rgb(255, 200, 205)", width: 4 },
-                tailSeconds: 0.09,
+                beam: { color: [255, 200, 205], width: 2.5, haloColor: [255, 120, 130], haloAlpha: 0.35, haloWidth: 9, decaySeconds: 0.1, gain: 4000 },
             },
             y: {
                 path: { color: "rgba(255, 160, 60, 0.25)", width: 1 },
@@ -86,8 +99,7 @@ export function createTheme(): Theme {
                     radius: 7,
                     glowRadius: 26,
                 },
-                tail: { color: "rgb(255, 205, 100)", width: 4 },
-                tailSeconds: 0.09,
+                beam: { color: [255, 205, 100], width: 2.5, haloColor: [255, 150, 30], haloAlpha: 0.35, haloWidth: 9, decaySeconds: 0.1, gain: 4000 },
             },
         },
         marker: {
@@ -97,8 +109,7 @@ export function createTheme(): Theme {
                 radius: 6,
                 glowRadius: 24,
             },
-            tail: { color: "rgb(255, 190, 150)", width: 2.5 },
-            tailSeconds: 0.8,
+            beam: { color: [255, 215, 185], width: 2.5, haloColor: [255, 140, 90], haloAlpha: 0.5, haloWidth: 8, decaySeconds: 0.3, gain: 10000 },
         },
     }
 }
