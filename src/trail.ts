@@ -1,13 +1,14 @@
 import { createSurface } from "./canvas";
 import { renderTrailSegment } from "./render";
 import { trailPeriod, trailTimeStep, type Projection } from "./projection";
+import type { Theme } from "./theme";
 
 export interface Trail {
     toggle(): void
     render(timeSeconds: number): void
 }
 
-export function createTrail(parent: HTMLElement, projection: Projection): Trail {
+export function createTrail(parent: HTMLElement, projection: Projection, theme: Theme): Trail {
     const surface = createSurface(parent)
     let enabled = true
     let justEnabled = true
@@ -22,7 +23,7 @@ export function createTrail(parent: HTMLElement, projection: Projection): Trail 
         justEnabled = true
         surface.ctx.canvas.hidden = !enabled
     }
-    
+
     function render(timeSeconds: number): void {
         if (justEnabled) {
             startSec = timeSeconds
@@ -32,7 +33,7 @@ export function createTrail(parent: HTMLElement, projection: Projection): Trail 
         if (enabled && !complete) {
             surface.ctx.clearRect(0, 0, surface.width, surface.height)
             const endT = Math.min(timeSeconds, startSec + periodSec)
-            renderTrailSegment(surface.ctx, projection, startSec, endT, renderDt)
+            renderTrailSegment(surface.ctx, projection, theme.trail, startSec, endT, renderDt)
             complete = endT < timeSeconds
         }
     }

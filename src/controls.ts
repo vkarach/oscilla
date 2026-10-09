@@ -32,7 +32,7 @@ export function createControls(parent: HTMLElement, handlers: ControlHandlers, t
     slider.value = String(scaleToSlider(timeScale))
 }
 
-const minScale = 0.01
+const minScale = 0.05
 const maxScale = 200
 
 function sliderToScale(value: number): number {

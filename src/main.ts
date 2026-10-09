@@ -6,6 +6,7 @@ import { createScene } from "./scene";
 import { createTrail } from "./trail";
 import { createClock } from "./clock";
 import { createSound } from "./sound";
+import { createTheme } from "./theme";
 
 function getRootElement(): HTMLDivElement {
     const element = document.querySelector<HTMLDivElement>("#app");
@@ -17,7 +18,9 @@ function getRootElement(): HTMLDivElement {
 
 const app = getRootElement();
 const scene = createScene()
-const trail = createTrail(app, scene.projection)
+const theme = createTheme()
+app.style.background = theme.background
+const trail = createTrail(app, scene.projection, theme)
 const surface = createSurface(app);
 const clock = createClock(scene.timeScale)
 const sound = createSound(clock, scene.projection)
@@ -35,7 +38,7 @@ createControls(
 function renderFrame(timeMs: number): void {
     const timeSeconds = clock.tick(timeMs)
 
-    renderScene(surface, scene, timeSeconds)
+    renderScene(surface, scene, theme, timeSeconds, clock.anchor().timeScale)
     trail.render(timeSeconds)
 
     requestAnimationFrame(renderFrame);
