@@ -58,11 +58,11 @@ function createClickNode(ctx: AudioContext, gain: GainNode, clock: Clock, freque
     const options: ClickOptions = { frequencyHz }
     const node = new AudioWorkletNode(ctx, "click", { processorOptions: options })
 
-    const ringHz = 1500
-    const ringQ = 0.7
+    const ringHz = 2500
+    const ringQ = 1.5
 
     const filter = ctx.createBiquadFilter()
-    filter.type = "lowpass"
+    filter.type = "bandpass"
     filter.frequency.value = ringHz
     filter.Q.value = ringQ
     node.connect(filter)
