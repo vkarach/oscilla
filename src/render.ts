@@ -2,6 +2,7 @@ import { context2d, type Surface } from "./canvas";
 import type { Point } from "./geometry";
 
 import { pathStart, pathEnd, type Oscillation, computePosition} from "./oscillation"
+import { phaseCycles } from "./phase";
 import { projectionPoint, trailPeriod, trailTimeStep, type Projection } from "./projection";
 import type { Scene } from "./scene";
 import type { BeamStyle, BodyStyle, DotStyle, GlowStyle, GuideStyle, LineStyle, MarkerStyle, Rgb, Theme } from "./theme";
@@ -105,7 +106,7 @@ function renderLineGlow(layers: Layers, style: BeamStyle, oscillation: Oscillati
     const { amplitude, frequencyHz } = oscillation
     const omega = 2 * Math.PI * frequencyHz * frame.timeScale
     const laps = 1 / (1 - Math.exp(-1 / (frequencyHz * frame.timeScale * style.decaySeconds)))
-    const phase = 2 * Math.PI * frequencyHz * frame.simSeconds
+    const phase = 2 * Math.PI * phaseCycles(oscillation, frame.simSeconds)
     const from = pathStart(oscillation)
     const to = pathEnd(oscillation)
     const core = ctx.createLinearGradient(from.x, from.y, to.x, to.y)

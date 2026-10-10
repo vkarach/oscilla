@@ -1,15 +1,15 @@
 import type { Point } from "./geometry";
+import { phaseCycles, type Phase } from "./phase";
 
-export interface Oscillation {
+export interface Oscillation extends Phase {
     center: Point;
     axis: "x" | "y";
     amplitude: number;
-    frequencyHz: number;
 }
 
 export function computePosition(oscillation: Oscillation, timeSeconds: number): Point {
     const offset =
-        oscillation.amplitude * Math.sin(2 * Math.PI * oscillation.frequencyHz * timeSeconds);
+        oscillation.amplitude * Math.sin(2 * Math.PI * phaseCycles(oscillation, timeSeconds));
 
     if (oscillation.axis === "x") {
         return { x: oscillation.center.x + offset, y: oscillation.center.y };

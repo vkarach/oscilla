@@ -6,6 +6,7 @@ import type { Theme } from "./theme";
 export interface Trail {
     toggle(): void
     render(timeSeconds: number): void
+    restart(): void
 }
 
 export function createTrail(parent: HTMLElement, projection: Projection, theme: Theme): Trail {
@@ -14,8 +15,8 @@ export function createTrail(parent: HTMLElement, projection: Projection, theme: 
     let justEnabled = true
     let complete = false
     let startSec = 0
-    const periodSec = trailPeriod(projection)
-    const renderDt = trailTimeStep(projection, 1.5)
+    let periodSec = trailPeriod(projection)
+    let renderDt = trailTimeStep(projection, 1.5)
     surface.onResize(() => { complete = false })
 
     function toggle(): void {
@@ -38,6 +39,12 @@ export function createTrail(parent: HTMLElement, projection: Projection, theme: 
         }
     }
 
-    return { toggle, render }
+    function restart(): void {
+        justEnabled = true
+        periodSec = trailPeriod(projection)
+        renderDt = trailTimeStep(projection, 1.5)
+    }
+
+    return { toggle, render, restart }
 }
 

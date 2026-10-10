@@ -1,23 +1,23 @@
-import type { ClickOptions, ClickTiming } from "./clickOptions"
+import type { ClickTiming } from "./clickTiming"
+import { phaseCycles } from "../phase"
 
 class ClickProcessor extends AudioWorkletProcessor {
-    private frequencyHz: number
-    private timing: ClickTiming = { simSeconds: 0, timeScale: 0, audioTime: 0 }
+    private timing: ClickTiming = { simSeconds: 0, timeScale: 0, audioTime: 0, phase: { frequencyHz: 0, phaseOffset: 0 } }
     private lastPhase = 0
     private carry = 0
 
-    constructor(options: { processorOptions: ClickOptions }) {
+    constructor() {
         super()
-        this.frequencyHz = options.processorOptions.frequencyHz
         this.port.onmessage = (event: MessageEvent<ClickTiming>) => {
             this.timing = event.data
             this.lastPhase = this.phaseAt(currentTime)
         }
     }
 
+    // Counts center crossings, two per cycle of the oscillation.
     private phaseAt(audioTime: number): number {
-        const { simSeconds, timeScale, audioTime: anchorTime } = this.timing
-        return 2 * this.frequencyHz * (simSeconds + (audioTime - anchorTime) * timeScale)
+        const { simSeconds, timeScale, audioTime: anchorTime, phase } = this.timing
+        return 2 * phaseCycles(phase, simSeconds + (audioTime - anchorTime) * timeScale)
     }
 
     process(_inputs: Float32Array[][], outputs: Float32Array[][]): boolean {

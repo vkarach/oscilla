@@ -28,11 +28,21 @@ const sound = createSound(clock, scene.projection)
 
 // rAF stops in a hidden tab while audio keeps running, so freeze scene time to keep them in step.
 document.addEventListener("visibilitychange", () => clock.setPaused(document.hidden))
+scene.onChange(trail.restart)
+scene.onChange(sound.sync)
 
 createControls(
     app, 
-    { onToggleTrail: trail.toggle, onToggleSound: sound.toggle, onTimeScaleChange: clock.setTimeScale },
-    scene.timeScale
+    { 
+        onToggleTrail: trail.toggle, 
+        onToggleSound: sound.toggle, 
+        onTimeScaleChange: clock.setTimeScale,
+        onFHzChange: (fHz, axis) => scene.changeFHz(fHz, axis, clock.anchor().simSeconds)
+    },
+    {
+        timeScale: scene.timeScale,
+        frequencyHz: { x: scene.projection.horizontal.frequencyHz, y: scene.projection.vertical.frequencyHz },
+    }
 )
 
 
