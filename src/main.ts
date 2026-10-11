@@ -6,7 +6,7 @@ import { createScene } from "./scene";
 import { createTrail } from "./trail";
 import { createClock } from "./clock";
 import { createSound } from "./sound";
-import { createTheme } from "./theme";
+import { applyThemeVariables, createTheme } from "./theme";
 import { createCamera, dragToRotate } from "./camera";
 
 function getRootElement(): HTMLDivElement {
@@ -21,6 +21,7 @@ const app = getRootElement();
 const scene = createScene()
 const theme = createTheme()
 app.style.background = theme.background
+applyThemeVariables(app, theme)
 const camera = createCamera(0.6, -0.4)
 const trail = createTrail(app, scene.lissajous, theme, camera)
 const surface = createSurface(app);
@@ -51,6 +52,8 @@ createControls(
             y: scene.lissajous.y.frequencyHz, 
             z: scene.lissajous.z.frequencyHz
         },
+        trailOn: true,
+        soundOn: false,
     }
 )
 

@@ -64,6 +64,18 @@ export interface Theme {
     marker: MarkerStyle
 }
 
+// Hands the canvas palette to the HTML controls so colors live in one place.
+export function applyThemeVariables(element: HTMLElement, theme: Theme): void {
+    for (const [axis, body] of Object.entries(theme.bodies)) {
+        element.style.setProperty(`--axis-${axis}`, rgb(body.beam.haloColor))
+    }
+    element.style.setProperty("--marker", rgb(theme.marker.beam.haloColor))
+}
+
+function rgb(color: Rgb): string {
+    return `rgb(${color.join(", ")})`
+}
+
 export function createTheme(): Theme {
     return {
         background: "#0d0d10",

@@ -26,4 +26,111 @@ body {
     position: absolute;
     top: 16px;
     left: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid rgba(255, 150, 110, 0.16);
+    border-radius: 10px;
+    background: rgba(18, 16, 20, 0.7);
+    backdrop-filter: blur(6px);
+    color: rgba(255, 235, 220, 0.85);
+    color-scheme: dark;
+    font: 12px/1 ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+.toggle {
+    padding: 7px 12px;
+    border: 1px solid rgba(255, 150, 110, 0.22);
+    border-radius: 6px;
+    background: transparent;
+    color: rgba(255, 235, 220, 0.55);
+    font: inherit;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.toggle:hover {
+    border-color: rgba(255, 150, 110, 0.5);
+}
+
+.toggle[aria-pressed="true"] {
+    border-color: var(--marker);
+    color: rgb(255, 242, 232);
+    box-shadow: 0 0 10px -2px var(--marker), inset 0 0 8px -4px var(--marker);
+}
+
+.toggle:focus-visible {
+    outline: 1px solid var(--marker);
+    outline-offset: 2px;
+}
+
+.field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border: 1px solid rgba(255, 150, 110, 0.14);
+    border-radius: 6px;
+    transition: border-color 0.15s;
+}
+
+.field:focus-within {
+    border-color: var(--accent);
+}
+
+.caption {
+    color: var(--accent);
+    text-shadow: 0 0 6px var(--accent);
+}
+
+.unit {
+    opacity: 0.5;
+}
+
+.readout {
+    min-width: 6ch;
+    text-align: right;
+}
+
+.field input[type="number"] {
+    width: 5ch;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+}
+
+.field input[type="number"]:invalid {
+    color: rgb(255, 100, 100);
+}
+
+.field input[type="range"] {
+    width: 140px;
+    height: 2px;
+    margin: 0;
+    border-radius: 1px;
+    background: rgba(255, 150, 110, 0.3);
+    appearance: none;
+    cursor: pointer;
+}
+
+.field input[type="range"]::-webkit-slider-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgb(255, 245, 235);
+    box-shadow: 0 0 8px var(--accent);
+    appearance: none;
+}
+
+.field input[type="range"]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border: none;
+    border-radius: 50%;
+    background: rgb(255, 245, 235);
+    box-shadow: 0 0 8px var(--accent);
 }
