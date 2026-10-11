@@ -27,8 +27,22 @@ export function createControls(parent: HTMLElement, handlers: ControlHandlers, i
     soundToggleBtn.addEventListener("click", handlers.onToggleSound);
     controls.append(soundToggleBtn)
 
-    controls.append(createFhzInput(handlers, "x", initial.frequencyHz.x))
-    controls.append(createFhzInput(handlers, "y", initial.frequencyHz.y))
+    const frequencyHz = { ...initial.frequencyHz }
+    let timeScale = initial.timeScale
+
+    for (const axis of ["x", "y"] as const) {
+        controls.append(createFhzInput(frequencyHz[axis], (fHz) => {
+            frequencyHz[axis] = fHz
+            handlers.onFHzChange(fHz, axis)
+            const { min, max } = scaleRange(frequencyHz)
+            const clamped = Math.min(max, Math.max(min, timeScale))
+            if (clamped !== timeScale) {
+                timeScale = clamped
+                handlers.onTimeScaleChange(timeScale)
+            }
+            placeSlider()
+        }))
+    }
 
     const slider = document.createElement("input")
     slider.type = "range"
@@ -37,23 +51,39 @@ export function createControls(parent: HTMLElement, handlers: ControlHandlers, i
     slider.step = "0.001"
     controls.append(slider)
     slider.addEventListener("input", () => {
-        handlers.onTimeScaleChange(sliderToScale(Number(slider.value)))
+        timeScale = sliderToScale(Number(slider.value), scaleRange(frequencyHz))
+        handlers.onTimeScaleChange(timeScale)
     })
-    slider.value = String(scaleToSlider(initial.timeScale))
+
+    function placeSlider(): void {
+        slider.value = String(scaleToSlider(timeScale, scaleRange(frequencyHz)))
+    }
+    placeSlider()
 }
 
-const minScale = 0.05
-const maxScale = 200
-
-function sliderToScale(value: number): number {
-    return minScale * (maxScale / minScale) ** value
+interface ScaleRange {
+    min: number
+    max: number
 }
 
-function scaleToSlider(scale: number): number {
-    return Math.log(scale / minScale) / Math.log(maxScale / minScale)
+// Real cycles per second of the fastest body at the slider ends.
+const slowestHz = 0.25
+const fastestHz = 1000
+
+function scaleRange(frequencyHz: Record<Axis, number>): ScaleRange {
+    const top = Math.max(frequencyHz.x, frequencyHz.y)
+    return { min: slowestHz / top, max: fastestHz / top }
 }
 
-function createFhzInput(handlers: ControlHandlers, axis: Axis, initialHz: number): HTMLInputElement {
+function sliderToScale(value: number, { min, max }: ScaleRange): number {
+    return min * (max / min) ** value
+}
+
+function scaleToSlider(scale: number, { min, max }: ScaleRange): number {
+    return Math.log(scale / min) / Math.log(max / min)
+}
+
+function createFhzInput(initialHz: number, onChange: (fHz: number) => void): HTMLInputElement {
     const fHzInput = document.createElement("input")
     fHzInput.style.width = "5ch"
     fHzInput.type = "number"
@@ -63,7 +93,7 @@ function createFhzInput(handlers: ControlHandlers, axis: Axis, initialHz: number
     fHzInput.addEventListener(
         "input",
         () => {
-            if (fHzInput.checkValidity()) handlers.onFHzChange(Number(fHzInput.value), axis)
+            if (fHzInput.checkValidity()) onChange(Number(fHzInput.value))
         }
     )
     return fHzInput
