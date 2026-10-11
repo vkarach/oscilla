@@ -3,9 +3,10 @@ import type { Point } from "./geometry";
 
 import { pathStart, pathEnd, type Oscillation, computePosition} from "./oscillation"
 import { phaseCycles } from "./phase";
-import { projectionPoint, trailPeriod, trailTimeStep, type Projection } from "./projection";
+import { lissajousPoint, trailPeriod, trailTimeStep, type Lissajous } from "./lissajous";
 import type { Scene } from "./scene";
 import type { BeamStyle, BodyStyle, DotStyle, GlowStyle, GuideStyle, LineStyle, MarkerStyle, Rgb, Theme } from "./theme";
+import type { Camera } from "./camera"
 
 type PointAt = (timeSeconds: number) => Point
 
@@ -26,6 +27,9 @@ interface BodyView {
     style: BodyStyle
     beam: Beam
     visibility: number
+    // Screen ends of the line the body travels.
+    from: Point
+    to: Point
 }
 
 interface Layers {
@@ -35,7 +39,7 @@ interface Layers {
 }
 
 export interface Renderer {
-    render(scene: Scene, theme: Theme, frame: FrameTime): void
+    render(scene: Scene, theme: Theme, frame: FrameTime, camera: Camera): void
 }
 
 export function createRenderer(surface: Surface): Renderer {
@@ -49,11 +53,11 @@ export function createRenderer(surface: Surface): Renderer {
     fitGlow()
     surface.onResize(fitGlow)
 
-    function render(scene: Scene, theme: Theme, frame: FrameTime): void {
+    function render(scene: Scene, theme: Theme, frame: FrameTime, camera: Camera): void {
         const { ctx } = surface
         ctx.clearRect(0, 0, surface.width, surface.height)
         glow.clearRect(0, 0, surface.width, surface.height)
-        renderScene({ ctx, glow }, scene, theme, frame)
+        renderScene({ ctx, glow }, scene, theme, frame, camera)
 
         ctx.save()
         ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -66,53 +70,55 @@ export function createRenderer(surface: Surface): Renderer {
     return { render }
 }
 
-function renderScene(layers: Layers, scene: Scene, theme: Theme, frame: FrameTime): void {
+function renderScene(layers: Layers, scene: Scene, theme: Theme, frame: FrameTime, camera: Camera): void {
     const { ctx } = layers
     const t = frame.simSeconds
-    const pPoint = projectionPoint(scene.projection, t)
-    const dt = trailTimeStep(scene.projection, 2)
+    const pPoint = camera.project(lissajousPoint(scene.lissajous, t))
+    const dt = trailTimeStep(scene.lissajous, 2)
 
     const views = scene.bodies.map((body): BodyView => {
         const { oscillation } = body
         const style = theme.bodies[oscillation.axis]
-        const beam: Beam = { pointAt: (t) => computePosition(oscillation, t), periodSeconds: 1 / oscillation.frequencyHz }
-        return { oscillation, style, beam, visibility: spotVisibility(style.ball, beam, frame, dt) }
+        const beam: Beam = { pointAt: (t) => camera.project(computePosition(oscillation, t)), periodSeconds: 1 / oscillation.frequencyHz }
+        const from = camera.project(pathStart(oscillation))
+        const to = camera.project(pathEnd(oscillation))
+        return { oscillation, style, beam, visibility: spotVisibility(style.ball, beam, frame, dt), from, to }
     })
     // A guide hangs off its body's spot, so it fades together with it.
     for (const view of views) renderGuide(ctx, theme.guide, view.beam.pointAt(t), pPoint, view.visibility)
     for (const view of views) renderBody(layers, view, frame)
-    renderMarker(layers, theme.marker, scene.projection, frame, dt)
+    renderMarker(layers, theme.marker, scene.lissajous, frame, dt, camera)
 }
 
 function renderBody(layers: Layers, view: BodyView, frame: FrameTime): void {
     const { ctx } = layers
-    const { oscillation, style, beam } = view
-    const from = pathStart(oscillation)
-    const to = pathEnd(oscillation)
+    const { style, beam, from, to } = view
     strokeLine(ctx, style.path, (ctx) => {
         ctx.moveTo(from.x, from.y)
         ctx.lineTo(to.x, to.y)
     })
-    renderCenterTick(ctx, style.tick, oscillation)
+    renderCenterTick(ctx, style.tick, from, to)
 
-    renderLineGlow(layers, style.beam, oscillation, frame)
+    renderLineGlow(layers, view, frame)
     fillGlowDot(ctx, style.ball, beam.pointAt(frame.simSeconds), view.visibility)
 }
 
 // A body retraces one straight line, so its glow is solved exactly per point of the path and drawn as one gradient.
-function renderLineGlow(layers: Layers, style: BeamStyle, oscillation: Oscillation, frame: FrameTime): void {
+function renderLineGlow(layers: Layers, view: BodyView, frame: FrameTime): void {
     const { ctx, glow } = layers
     if (frame.timeScale <= 0) return
-    const { amplitude, frequencyHz } = oscillation
+    const { oscillation, from, to } = view
+    const style = view.style.beam
+    const { frequencyHz } = oscillation
     const omega = 2 * Math.PI * frequencyHz * frame.timeScale
     const laps = 1 / (1 - Math.exp(-1 / (frequencyHz * frame.timeScale * style.decaySeconds)))
     const phase = 2 * Math.PI * phaseCycles(oscillation, frame.simSeconds)
-    const from = pathStart(oscillation)
-    const to = pathEnd(oscillation)
     const core = ctx.createLinearGradient(from.x, from.y, to.x, to.y)
     const halo = glow.createLinearGradient(from.x, from.y, to.x, to.y)
+    // Measured on screen, where the line may look shorter than it is in the world.
+    const lengthPx = Math.hypot(to.x - from.x, to.y - from.y)
     const binPx = 3
-    const bins = Math.ceil(2 * amplitude / binPx)
+    const bins = Math.max(1, Math.ceil(lengthPx / binPx))
 
     for (let i = 0; i < bins; i++) {
         const low = Math.asin(-1 + 2 * i / bins)
@@ -120,7 +126,7 @@ function renderLineGlow(layers: Layers, style: BeamStyle, oscillation: Oscillati
         const rising = (low + high) / 2
         // The beam crosses each point twice per period, once on the way out and once on the way back.
         const ages = [rising, Math.PI - rising].map((crossing) => wrapAngle(phase - crossing) / omega)
-        const energy = style.gain * ((high - low) / omega) / (2 * amplitude / bins)
+        const energy = style.gain * ((high - low) / omega) / Math.max(lengthPx / bins, 1e-6)
         const brightness = energy * laps * ages.reduce((sum, age) => sum + Math.exp(-age / style.decaySeconds), 0)
         const alpha = 1 - Math.exp(-brightness)
         const offset = (i + 0.5) / bins
@@ -151,8 +157,8 @@ function rgba(color: Rgb, alpha: number): string {
     return `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha})`
 }
 
-function renderMarker(layers: Layers, style: MarkerStyle, projection: Projection, frame: FrameTime, dt: number): void {
-    const beam: Beam = { pointAt: (t) => projectionPoint(projection, t), periodSeconds: trailPeriod(projection) }
+function renderMarker(layers: Layers, style: MarkerStyle, lissajous: Lissajous, frame: FrameTime, dt: number, camera: Camera): void {
+    const beam: Beam = { pointAt: (t) => camera.project(lissajousPoint(lissajous, t)), periodSeconds: trailPeriod(lissajous) }
     renderPhosphor(layers, style.beam, beam, frame, dt)
     fillGlowDot(layers.ctx, style.dot, beam.pointAt(frame.simSeconds), spotVisibility(style.dot, beam, frame, dt))
 }
@@ -226,11 +232,14 @@ function pathLength(pointAt: PointAt, fromT: number, toT: number, dt: number): n
     return length + Math.hypot(end.x - prev.x, end.y - prev.y)
 }
 
-function renderCenterTick(ctx: CanvasRenderingContext2D, style: LineStyle, oscillation: Oscillation): void {
+function renderCenterTick(ctx: CanvasRenderingContext2D, style: LineStyle, from: Point, to: Point): void {
     const tickHalfLength = 10
-    const { center, axis } = oscillation
-    const dx = axis === "y" ? tickHalfLength : 0
-    const dy = axis === "x" ? tickHalfLength : 0
+    const length = Math.hypot(to.x - from.x, to.y - from.y)
+    // A line seen end-on has no direction to cross.
+    if (length === 0) return
+    const center = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 }
+    const dx = -(to.y - from.y) / length * tickHalfLength
+    const dy = (to.x - from.x) / length * tickHalfLength
 
     strokeLine(ctx, style, (ctx) => {
         ctx.moveTo(center.x - dx, center.y - dy)
@@ -254,8 +263,8 @@ function renderGuide(ctx: CanvasRenderingContext2D, style: GuideStyle, from: Poi
     ctx.restore()
 }
 
-export function renderTrailSegment(ctx: CanvasRenderingContext2D, projection: Projection, style: GlowStyle, fromT: number, toT: number, dt: number) {
-    strokeGlow(ctx, style, (ctx) => tracePolyline(ctx, (t) => projectionPoint(projection, t), fromT, toT, dt))
+export function renderTrailSegment(ctx: CanvasRenderingContext2D, lissajous: Lissajous, style: GlowStyle, fromT: number, toT: number, dt: number, camera: Camera) {
+    strokeGlow(ctx, style, (ctx) => tracePolyline(ctx, (t) => camera.project(lissajousPoint(lissajous, t)), fromT, toT, dt))
 }
 
 function tracePolyline(ctx: CanvasPath, pointAt: PointAt, fromT: number, toT: number, dt: number): void {

@@ -1,12 +1,12 @@
 import type { Oscillation } from "./oscillation";
 import { retune } from "./phase";
-import type { Projection } from "./projection";
+import type { Lissajous } from "./lissajous";
 import type { Body } from "./body";
 
 export interface Scene {
     timeScale: number
     bodies: Body[]
-    projection: Projection
+    lissajous: Lissajous
     changeFHz: (fHz: number, axis: "x" | "y", atSeconds: number) => void
     onChange: (callback: () => void) => void
 }
@@ -24,21 +24,21 @@ export function createScene(): Scene {
 
     const timeScale = 0.2;
 
-    const horizontal: Oscillation = { center: { x: 450, y: 100 }, axis: "x", amplitude: 200, frequencyHz: 2, phaseOffset: 0 }
-    const vertical: Oscillation   = { center: { x: 200, y: 350 }, axis: "y", amplitude: 200, frequencyHz: 5, phaseOffset: 0 }
+    const horizontal: Oscillation = { center: { x: 450, y: 100, z: 0 }, axis: "x", amplitude: 200, frequencyHz: 2, phaseOffset: 0 }
+    const vertical: Oscillation   = { center: { x: 200, y: 350, z: 0 }, axis: "y", amplitude: 200, frequencyHz: 5, phaseOffset: 0 }
 
     const bodies: Body[] = [
         { oscillation: horizontal },
         { oscillation: vertical },
     ];
 
-    const projection: Projection = { horizontal, vertical }
+    const lissajous: Lissajous = { horizontal, vertical }
 
 
     function changeFHz(fHz: number, axis: "x" | "y", atSeconds: number) {
-        retune(axis == "x" ? projection.horizontal : projection.vertical, fHz, atSeconds)
+        retune(axis == "x" ? lissajous.horizontal : lissajous.vertical, fHz, atSeconds)
         notifyChange()
     }
 
-    return { timeScale, bodies, projection, changeFHz, onChange }
+    return { timeScale, bodies, lissajous: lissajous, changeFHz, onChange }
 }

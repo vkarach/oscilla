@@ -7,6 +7,7 @@ import { createTrail } from "./trail";
 import { createClock } from "./clock";
 import { createSound } from "./sound";
 import { createTheme } from "./theme";
+import { createCamera } from "./camera";
 
 function getRootElement(): HTMLDivElement {
     const element = document.querySelector<HTMLDivElement>("#app");
@@ -20,11 +21,12 @@ const app = getRootElement();
 const scene = createScene()
 const theme = createTheme()
 app.style.background = theme.background
-const trail = createTrail(app, scene.projection, theme)
+const camera = createCamera()
+const trail = createTrail(app, scene.lissajous, theme, camera)
 const surface = createSurface(app);
 const renderer = createRenderer(surface)
 const clock = createClock(scene.timeScale)
-const sound = createSound(clock, scene.projection)
+const sound = createSound(clock, scene.lissajous)
 
 // rAF stops in a hidden tab while audio keeps running, so freeze scene time to keep them in step.
 document.addEventListener("visibilitychange", () => clock.setPaused(document.hidden))
@@ -41,7 +43,7 @@ createControls(
     },
     {
         timeScale: scene.timeScale,
-        frequencyHz: { x: scene.projection.horizontal.frequencyHz, y: scene.projection.vertical.frequencyHz },
+        frequencyHz: { x: scene.lissajous.horizontal.frequencyHz, y: scene.lissajous.vertical.frequencyHz },
     }
 )
 
@@ -49,12 +51,16 @@ createControls(
 let lastSimSeconds = 0
 function renderFrame(timeMs: number): void {
     const simSeconds = clock.tick(timeMs)
-
-    renderer.render(scene, theme, {
-        simSeconds,
-        timeScale: clock.anchor().timeScale,
-        frameSimSeconds: simSeconds - lastSimSeconds,
-    })
+    renderer.render(
+        scene, 
+        theme, 
+        {
+            simSeconds,
+            timeScale: clock.anchor().timeScale,
+            frameSimSeconds: simSeconds - lastSimSeconds,
+        }, 
+        camera
+    )
     trail.render(simSeconds)
     lastSimSeconds = simSeconds
 

@@ -101,6 +101,17 @@ export function createTheme(): Theme {
                 },
                 beam: { color: [255, 205, 100], width: 2.5, haloColor: [255, 150, 30], haloAlpha: 0.35, haloWidth: 9, decaySeconds: 0.1, gain: 4000 },
             },
+            z: {
+                path: { color: "rgba(190, 140, 255, 0.25)", width: 1 },
+                tick: { color: "rgba(190, 140, 255, 0.6)", width: 1.5 },
+                ball: {
+                    coreColor: "rgb(250, 245, 255)",
+                    color: "rgba(170, 110, 255, 0.8)",
+                    radius: 7,
+                    glowRadius: 26,
+                },
+                beam: { color: [220, 190, 255], width: 2.5, haloColor: [170, 110, 255], haloAlpha: 0.35, haloWidth: 9, decaySeconds: 0.1, gain: 4000 },
+            },
         },
         marker: {
             dot: {

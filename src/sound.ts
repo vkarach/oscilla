@@ -2,7 +2,7 @@ import clickUrl from "./worklets/click.ts?worker&url"
 
 import type { ClickTiming } from "./worklets/clickTiming"
 import type { Oscillation } from "./oscillation";
-import type { Projection } from "./projection";
+import type { Lissajous } from "./lissajous";
 import type { Clock } from "./clock";
 
 export interface Sound {
@@ -14,7 +14,7 @@ interface ClickVoice {
     sync(): void
 }
 
-export function createSound(clock: Clock, projection: Projection): Sound {
+export function createSound(clock: Clock, lissajous: Lissajous): Sound {
     const ctx = new AudioContext()
 
     const gain = ctx.createGain()
@@ -28,7 +28,7 @@ export function createSound(clock: Clock, projection: Projection): Sound {
     const fadeSeconds = 0.02
 
     async function toggle() {
-        voicesReady ??= createClickVoices(ctx, gain, clock, projection)
+        voicesReady ??= createClickVoices(ctx, gain, clock, lissajous)
         const voices = await voicesReady
 
         playing = !playing
@@ -59,11 +59,11 @@ function delay(seconds: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, seconds * 1000))
 }
 
-async function createClickVoices(ctx: AudioContext, gain: GainNode, clock: Clock, projection: Projection): Promise<ClickVoice[]> {
+async function createClickVoices(ctx: AudioContext, gain: GainNode, clock: Clock, lissajous: Lissajous): Promise<ClickVoice[]> {
     await ctx.audioWorklet.addModule(clickUrl)
     return [
-        createClickVoice(ctx, gain, clock, projection.horizontal),
-        createClickVoice(ctx, gain, clock, projection.vertical),
+        createClickVoice(ctx, gain, clock, lissajous.horizontal),
+        createClickVoice(ctx, gain, clock, lissajous.vertical),
     ]
 }
 
