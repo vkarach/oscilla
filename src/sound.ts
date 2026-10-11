@@ -8,6 +8,9 @@ import type { Clock } from "./clock";
 export interface Sound {
     toggle(): Promise<void>
     sync(): void
+    playOnFirstGesture(): void
+    isAudible(): boolean
+    onChange(callback: () => void): void
 }
 
 interface ClickVoice {
@@ -21,28 +24,65 @@ export function createSound(clock: Clock, lissajous: Lissajous): Sound {
     gain.gain.value = 0
     gain.connect(ctx.destination)
 
+    // Wanted by the user; audible lags behind it until the browser lets audio run.
     let playing = false
+    let audible = false
 
     let voicesReady: Promise<ClickVoice[]> | undefined
     const volume = 2
     const fadeSeconds = 0.02
 
-    async function toggle() {
+    async function start(): Promise<void> {
         voicesReady ??= createClickVoices(ctx, gain, clock, lissajous)
         const voices = await voicesReady
+        if (!playing) return
+        await ctx.resume()
+        if (!playing) return
+        // The audio clock only maps to real time once the context runs.
+        for (const voice of voices) voice.sync()
+        gain.gain.setTargetAtTime(volume, ctx.currentTime, fadeSeconds)
+        setAudible(true)
+    }
 
-        playing = !playing
-        if (playing) {
-            await ctx.resume()
-            // The audio clock only maps to real time once the context runs.
-            for (const voice of voices) voice.sync()
-            gain.gain.setTargetAtTime(volume, ctx.currentTime, fadeSeconds)
+    async function stop(): Promise<void> {
+        setAudible(false)
+        gain.gain.setTargetAtTime(0, ctx.currentTime, fadeSeconds)
+        await delay(fadeSeconds * 5)
+        if (!playing) await ctx.suspend()
+    }
+
+    // Flips what the user hears, so a click while audio still waits to unlock turns it on.
+    async function toggle(): Promise<void> {
+        playing = !audible
+        await (playing ? start() : stop())
+    }
+
+    function setAudible(value: boolean): void {
+        if (audible === value) return
+        audible = value
+        for (const callback of changeListeners) callback()
+    }
+
+    const changeListeners: (() => void)[] = []
+    function onChange(callback: () => void): void {
+        changeListeners.push(callback)
+    }
+
+    // Browsers keep audio locked until the user first interacts, so sound that is on from the start waits for that.
+    function playOnFirstGesture(): void {
+        playing = true
+        const gesture = new AbortController()
+        const unlock = () => {
+            gesture.abort()
+            void start()
         }
-        else {
-            gain.gain.setTargetAtTime(0, ctx.currentTime, fadeSeconds)
-            await delay(fadeSeconds * 5)
-            if (!playing) await ctx.suspend()
+        for (const type of ["pointerdown", "pointerup", "keydown"]) {
+            document.addEventListener(type, unlock, { signal: gesture.signal })
         }
+    }
+
+    function isAudible(): boolean {
+        return audible
     }
 
     // Voices not created yet read the scene when they are.
@@ -52,7 +92,7 @@ export function createSound(clock: Clock, lissajous: Lissajous): Sound {
         })
     }
 
-    return { toggle, sync };
+    return { toggle, sync, playOnFirstGesture, isAudible, onChange };
 }
 
 function delay(seconds: number): Promise<void> {

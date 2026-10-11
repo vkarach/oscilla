@@ -14,19 +14,30 @@ export interface ControlState {
     readonly soundOn: boolean
 }
 
-export function createControls(parent: HTMLElement, handlers: ControlHandlers, initial: ControlState) {
+export interface Controls {
+    setSoundOn(on: boolean): void
+}
+
+export function createControls(parent: HTMLElement, handlers: ControlHandlers, initial: ControlState): Controls {
     const controls = document.createElement("div")
     controls.className = "controls"
     parent.append(controls)
 
-    controls.append(
-        createToggle("trail", initial.trailOn, handlers.onToggleTrail),
-        createToggle("sound", initial.soundOn, handlers.onToggleSound),
-    )
+    let trailOn = initial.trailOn
+    const trailToggle = createToggle("trail", trailOn, () => {
+        trailOn = !trailOn
+        setPressed(trailToggle, trailOn)
+        handlers.onToggleTrail()
+    })
+    // Lit only by setSoundOn, since audio may start well after the click or not at all.
+    const soundToggle = createToggle("sound", initial.soundOn, handlers.onToggleSound)
+    controls.append(trailToggle, soundToggle)
     for (const axis of ["x", "y", "z"] as const) {
         controls.append(createFhzInput(axis, initial.frequencyHz[axis], (fHz) => handlers.onFHzChange(fHz, axis)))
     }
     controls.append(createSpeedSlider(initial.timeScale, handlers.onTimeScaleChange))
+
+    return { setSoundOn: (on) => setPressed(soundToggle, on) }
 }
 
 // A fixed range keeps speed independent of the frequencies.
@@ -46,17 +57,17 @@ function formatScale(scale: number): string {
     return `${scale.toFixed(digits)}x`
 }
 
-function createToggle(label: string, on: boolean, onToggle: () => void): HTMLButtonElement {
+function createToggle(label: string, on: boolean, onClick: () => void): HTMLButtonElement {
     const button = document.createElement("button")
     button.className = "toggle"
     button.textContent = label
-    button.setAttribute("aria-pressed", String(on))
-    button.addEventListener("click", () => {
-        on = !on
-        button.setAttribute("aria-pressed", String(on))
-        onToggle()
-    })
+    setPressed(button, on)
+    button.addEventListener("click", onClick)
     return button
+}
+
+function setPressed(button: HTMLButtonElement, on: boolean): void {
+    button.setAttribute("aria-pressed", String(on))
 }
 
 function createField(name: string, accent: string): HTMLLabelElement {

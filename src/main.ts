@@ -28,6 +28,7 @@ const surface = createSurface(app);
 const renderer = createRenderer(surface)
 const clock = createClock(scene.timeScale)
 const sound = createSound(clock, scene.lissajous)
+sound.playOnFirstGesture()
 
 // rAF stops in a hidden tab while audio keeps running, so freeze scene time to keep them in step.
 document.addEventListener("visibilitychange", () => clock.setPaused(document.hidden))
@@ -37,7 +38,7 @@ camera.onChange(trail.redraw)
 surface.onResize(() => camera.setViewport(surface.width, surface.height))
 dragToRotate(surface.ctx.canvas, camera)
 
-createControls(
+const controls = createControls(
     app,
     { 
         onToggleTrail: trail.toggle, 
@@ -53,9 +54,10 @@ createControls(
             z: scene.lissajous.z.frequencyHz
         },
         trailOn: true,
-        soundOn: false,
+        soundOn: sound.isAudible(),
     }
 )
+sound.onChange(() => controls.setSoundOn(sound.isAudible()))
 
 
 let lastSimSeconds = 0
