@@ -7,7 +7,7 @@ import { createTrail } from "./trail";
 import { createClock } from "./clock";
 import { createSound } from "./sound";
 import { createTheme } from "./theme";
-import { createCamera } from "./camera";
+import { createCamera, dragToRotate } from "./camera";
 
 function getRootElement(): HTMLDivElement {
     const element = document.querySelector<HTMLDivElement>("#app");
@@ -21,7 +21,7 @@ const app = getRootElement();
 const scene = createScene()
 const theme = createTheme()
 app.style.background = theme.background
-const camera = createCamera()
+const camera = createCamera(0.6, -0.4)
 const trail = createTrail(app, scene.lissajous, theme, camera)
 const surface = createSurface(app);
 const renderer = createRenderer(surface)
@@ -32,9 +32,12 @@ const sound = createSound(clock, scene.lissajous)
 document.addEventListener("visibilitychange", () => clock.setPaused(document.hidden))
 scene.onChange(trail.restart)
 scene.onChange(sound.sync)
+camera.onChange(trail.redraw)
+surface.onResize(() => camera.setViewport(surface.width, surface.height))
+dragToRotate(surface.ctx.canvas, camera)
 
 createControls(
-    app, 
+    app,
     { 
         onToggleTrail: trail.toggle, 
         onToggleSound: sound.toggle, 
@@ -43,7 +46,11 @@ createControls(
     },
     {
         timeScale: scene.timeScale,
-        frequencyHz: { x: scene.lissajous.horizontal.frequencyHz, y: scene.lissajous.vertical.frequencyHz },
+        frequencyHz: { 
+            x: scene.lissajous.x.frequencyHz,
+            y: scene.lissajous.y.frequencyHz, 
+            z: scene.lissajous.z.frequencyHz
+        },
     }
 )
 

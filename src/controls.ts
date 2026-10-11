@@ -1,4 +1,4 @@
-type Axis = "x" | "y"
+import type { Axis } from "./geometry"
 
 export interface ControlHandlers {
     onToggleTrail: () => void
@@ -30,7 +30,7 @@ export function createControls(parent: HTMLElement, handlers: ControlHandlers, i
     const frequencyHz = { ...initial.frequencyHz }
     let timeScale = initial.timeScale
 
-    for (const axis of ["x", "y"] as const) {
+    for (const axis of ["x", "y", "z"] as const) {
         controls.append(createFhzInput(frequencyHz[axis], (fHz) => {
             frequencyHz[axis] = fHz
             handlers.onFHzChange(fHz, axis)
@@ -71,7 +71,7 @@ const slowestHz = 0.25
 const fastestHz = 1000
 
 function scaleRange(frequencyHz: Record<Axis, number>): ScaleRange {
-    const top = Math.max(frequencyHz.x, frequencyHz.y)
+    const top = Math.max(...Object.values(frequencyHz))
     return { min: slowestHz / top, max: fastestHz / top }
 }
 

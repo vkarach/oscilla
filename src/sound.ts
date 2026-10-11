@@ -61,10 +61,7 @@ function delay(seconds: number): Promise<void> {
 
 async function createClickVoices(ctx: AudioContext, gain: GainNode, clock: Clock, lissajous: Lissajous): Promise<ClickVoice[]> {
     await ctx.audioWorklet.addModule(clickUrl)
-    return [
-        createClickVoice(ctx, gain, clock, lissajous.horizontal),
-        createClickVoice(ctx, gain, clock, lissajous.vertical),
-    ]
+    return Object.values(lissajous).map((oscillation) => createClickVoice(ctx, gain, clock, oscillation))
 }
 
 function createClickVoice(ctx: AudioContext, gain: GainNode, clock: Clock, oscillation: Oscillation): ClickVoice {

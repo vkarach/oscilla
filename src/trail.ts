@@ -8,6 +8,7 @@ export interface Trail {
     toggle(): void
     render(timeSeconds: number): void
     restart(): void
+    redraw(): void
 }
 
 export function createTrail(parent: HTMLElement, lissajous: Lissajous, theme: Theme, camera: Camera): Trail {
@@ -18,7 +19,7 @@ export function createTrail(parent: HTMLElement, lissajous: Lissajous, theme: Th
     let startSec = 0
     let periodSec = trailPeriod(lissajous)
     let renderDt = trailTimeStep(lissajous, 1.5)
-    surface.onResize(() => { complete = false })
+    surface.onResize(redraw)
 
     function toggle(): void {
         enabled = !enabled
@@ -46,6 +47,11 @@ export function createTrail(parent: HTMLElement, lissajous: Lissajous, theme: Th
         renderDt = trailTimeStep(lissajous, 1.5)
     }
 
-    return { toggle, render, restart }
+    // Keeps the traced span and only paints it again, for when the view changes.
+    function redraw(): void {
+        complete = false
+    }
+
+    return { toggle, render, restart, redraw }
 }
 
