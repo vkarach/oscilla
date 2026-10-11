@@ -1,5 +1,5 @@
 import { context2d, type Surface } from "./canvas";
-import type { Point } from "./geometry";
+import type { Axis, Point } from "./geometry";
 
 import { pathStart, pathEnd, type Oscillation, computePosition} from "./oscillation"
 import { phaseCycles } from "./phase";
@@ -30,6 +30,7 @@ interface BodyView {
     // Screen ends of the line the body travels.
     from: Point
     to: Point
+    tick: [Point, Point][]
 }
 
 interface Layers {
@@ -82,7 +83,8 @@ function renderScene(layers: Layers, scene: Scene, theme: Theme, frame: FrameTim
         const beam: Beam = { pointAt: (t) => camera.project(computePosition(oscillation, t)), periodSeconds: 1 / oscillation.frequencyHz }
         const from = camera.project(pathStart(oscillation))
         const to = camera.project(pathEnd(oscillation))
-        return { oscillation, style, beam, visibility: spotVisibility(style.ball, beam, frame, dt), from, to }
+        const tick = centerTick(oscillation, camera)
+        return { oscillation, style, beam, visibility: spotVisibility(style.ball, beam, frame, dt), from, to, tick }
     })
     renderFrame(ctx, theme.frame, lissajousCorners(scene.lissajous).map(camera.project))
     // A guide hangs off its body's spot, so it fades together with it.
@@ -112,7 +114,12 @@ function renderBody(layers: Layers, view: BodyView, frame: FrameTime): void {
         ctx.moveTo(from.x, from.y)
         ctx.lineTo(to.x, to.y)
     })
-    renderCenterTick(ctx, style.tick, from, to)
+    strokeLine(ctx, style.tick, (ctx) => {
+        for (const [a, b] of view.tick) {
+            ctx.moveTo(a.x, a.y)
+            ctx.lineTo(b.x, b.y)
+        }
+    })
 
     renderLineGlow(layers, view, frame)
     fillGlowDot(ctx, style.ball, beam.pointAt(frame.simSeconds), view.visibility)
@@ -247,19 +254,15 @@ function pathLength(pointAt: PointAt, fromT: number, toT: number, dt: number): n
     return length + Math.hypot(end.x - prev.x, end.y - prev.y)
 }
 
-function renderCenterTick(ctx: CanvasRenderingContext2D, style: LineStyle, from: Point, to: Point): void {
+// A small cross through the rail center, built in the world so it turns with the scene like a solid part.
+function centerTick(oscillation: Oscillation, camera: Camera): [Point, Point][] {
     const tickHalfLength = 10
-    const length = Math.hypot(to.x - from.x, to.y - from.y)
-    // A line seen end-on has no direction to cross.
-    if (length === 0) return
-    const center = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 }
-    const dx = -(to.y - from.y) / length * tickHalfLength
-    const dy = (to.x - from.x) / length * tickHalfLength
-
-    strokeLine(ctx, style, (ctx) => {
-        ctx.moveTo(center.x - dx, center.y - dy)
-        ctx.lineTo(center.x + dx, center.y + dy)
-    })
+    const { center, axis } = oscillation
+    const across: Axis[] = (["x", "y", "z"] as const).filter((other) => other !== axis)
+    return across.map((other) => [
+        camera.project({ ...center, [other]: center[other] - tickHalfLength }),
+        camera.project({ ...center, [other]: center[other] + tickHalfLength }),
+    ])
 }
 
 function renderGuide(ctx: CanvasRenderingContext2D, style: GuideStyle, from: Point, to: Point, alpha: number): void {
