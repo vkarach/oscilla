@@ -57,6 +57,8 @@ export interface Theme {
     // Blur radius in px of the shared halo layer.
     bloomBlur: number
     guide: GuideStyle
+    // Edges of the box the figure fills, the main cue that the scene has depth.
+    frame: LineStyle
     trail: GlowStyle
     bodies: Record<Oscillation["axis"], BodyStyle>
     marker: MarkerStyle
@@ -71,6 +73,7 @@ export function createTheme(): Theme {
             fadeColor: "rgba(255, 150, 110, 0)",
             width: 1,
         },
+        frame: { color: "rgba(255, 150, 110, 0.18)", width: 1 },
         trail: {
             color: "rgba(255, 110, 60, 0.12)",
             coreColor: "rgb(120, 70, 50)",

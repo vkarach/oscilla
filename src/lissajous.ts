@@ -4,11 +4,21 @@ import { computePosition, type Oscillation } from "./oscillation";
 export type Lissajous = Record<Axis, Oscillation>
 
 export function lissajousPoint(lissajous: Lissajous, timeSeconds: number): Point3 {
-    return {
+    return { 
         x: computePosition(lissajous.x, timeSeconds).x,
         y: computePosition(lissajous.y, timeSeconds).y,
         z: computePosition(lissajous.z, timeSeconds).z
     }
+}
+
+// Corners of the box the figure fills; corner i takes its x, y, z side from bits 0, 1, 2.
+export function lissajousCorners(lissajous: Lissajous): Point3[] {
+    const { x, y, z } = lissajous
+    return Array.from({ length: 8 }, (_, i) => ({
+        x: x.center.x + (i & 1 ? 1 : -1) * x.amplitude,
+        y: y.center.y + (i & 2 ? 1 : -1) * y.amplitude,
+        z: z.center.z + (i & 4 ? 1 : -1) * z.amplitude,
+    }))
 }
 
 function maxSpeed(o: Oscillation): number {

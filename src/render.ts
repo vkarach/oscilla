@@ -3,7 +3,7 @@ import type { Point } from "./geometry";
 
 import { pathStart, pathEnd, type Oscillation, computePosition} from "./oscillation"
 import { phaseCycles } from "./phase";
-import { lissajousPoint, trailPeriod, trailTimeStep, type Lissajous } from "./lissajous";
+import { lissajousCorners, lissajousPoint, trailPeriod, trailTimeStep, type Lissajous } from "./lissajous";
 import type { Scene } from "./scene";
 import type { BeamStyle, BodyStyle, DotStyle, GlowStyle, GuideStyle, LineStyle, MarkerStyle, Rgb, Theme } from "./theme";
 import type { Camera } from "./camera"
@@ -84,10 +84,25 @@ function renderScene(layers: Layers, scene: Scene, theme: Theme, frame: FrameTim
         const to = camera.project(pathEnd(oscillation))
         return { oscillation, style, beam, visibility: spotVisibility(style.ball, beam, frame, dt), from, to }
     })
+    renderFrame(ctx, theme.frame, lissajousCorners(scene.lissajous).map(camera.project))
     // A guide hangs off its body's spot, so it fades together with it.
     for (const view of views) renderGuide(ctx, theme.guide, view.beam.pointAt(t), pPoint, view.visibility)
     for (const view of views) renderBody(layers, view, frame)
     renderMarker(layers, theme.marker, scene.lissajous, frame, dt, camera)
+}
+
+// Corners come indexed by axis bits, so an edge joins two corners that differ in one bit.
+function renderFrame(ctx: CanvasRenderingContext2D, style: LineStyle, corners: Point[]): void {
+    strokeLine(ctx, style, (ctx) => {
+        for (let i = 0; i < corners.length; i++) {
+            for (let bit = 1; bit < corners.length; bit <<= 1) {
+                const j = i ^ bit
+                if (i > j) continue
+                ctx.moveTo(corners[i].x, corners[i].y)
+                ctx.lineTo(corners[j].x, corners[j].y)
+            }
+        }
+    })
 }
 
 function renderBody(layers: Layers, view: BodyView, frame: FrameTime): void {
