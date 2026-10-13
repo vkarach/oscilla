@@ -4,6 +4,7 @@ import type { ClickTiming } from "./worklets/clickTiming"
 import type { Oscillation } from "./oscillation";
 import type { Lissajous } from "./lissajous";
 import type { Clock } from "./clock";
+import type { Axis } from "./geometry";
 
 export interface Sound {
     toggle(): Promise<void>
@@ -29,7 +30,8 @@ export function createSound(clock: Clock, lissajous: Lissajous): Sound {
     let audible = false
 
     const voicesReady = createClickVoices(ctx, gain, clock, lissajous)
-    const volume = 2
+    // Each ball peaks at most at 1, so three striking at once still reach only full scale.
+    const volume = 1 / 3
     const fadeSeconds = 0.02
 
     async function start(): Promise<void> {
@@ -101,6 +103,9 @@ function delay(seconds: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, seconds * 1000))
 }
 
+// Each ball's own resonance, an A major triad so balls ticking together sound consonant.
+const ringHz: Record<Axis, number> = { x: 440, y: 554.37, z: 659.26 }
+
 async function createClickVoices(ctx: AudioContext, gain: GainNode, clock: Clock, lissajous: Lissajous): Promise<ClickVoice[]> {
     await ctx.audioWorklet.addModule(clickUrl)
     return Object.values(lissajous).map((oscillation) => createClickVoice(ctx, gain, clock, oscillation))
@@ -108,31 +113,10 @@ async function createClickVoices(ctx: AudioContext, gain: GainNode, clock: Clock
 
 function createClickVoice(ctx: AudioContext, gain: GainNode, clock: Clock, oscillation: Oscillation): ClickVoice {
     const node = new AudioWorkletNode(ctx, "click")
-
-    const ringHz = 2500
-    const ringQ = 1.5
-
-    const filter = ctx.createBiquadFilter()
-    filter.type = "bandpass"
-    filter.frequency.value = ringHz
-    filter.Q.value = ringQ
-    node.connect(filter)
-    
-    const rateGain = ctx.createGain()
-    rateGain.gain.value = gainMultiplier(oscillation.frequencyHz, clock.anchor().timeScale)
-    filter.connect(rateGain)
-    rateGain.connect(gain)
+    node.connect(gain)
 
     function sync(): void {
-        const { timeScale } = clock.anchor()
         postTiming(node, ctx, clock, oscillation)
-        if (timeScale !== 0) {
-            const multiplier = gainMultiplier(oscillation.frequencyHz, timeScale)
-            rateGain.gain.setTargetAtTime(multiplier, ctx.currentTime, 0.02)
-        }
-        else {
-            rateGain.gain.value = 0
-        }
     }
 
     sync()
@@ -142,8 +126,8 @@ function createClickVoice(ctx: AudioContext, gain: GainNode, clock: Clock, oscil
 
 function postTiming(node: AudioWorkletNode, ctx: AudioContext, clock: Clock, oscillation: Oscillation) {
     const { simSeconds, timeScale, realMs } = clock.anchor()
-    const { frequencyHz, phaseOffset } = oscillation
-    const timing: ClickTiming = { simSeconds, timeScale, audioTime: audioTimeAt(ctx, realMs), phase: { frequencyHz, phaseOffset } }
+    const { frequencyHz, phaseOffset, axis } = oscillation
+    const timing: ClickTiming = { simSeconds, timeScale, audioTime: audioTimeAt(ctx, realMs), phase: { frequencyHz, phaseOffset }, ringHz: ringHz[axis] }
     node.port.postMessage(timing)
 }
 
@@ -154,12 +138,4 @@ function audioTimeAt(ctx: AudioContext, realMs: number): number {
         return ctx.currentTime + (realMs - performance.now()) / 1000
     }
     return contextTime + (realMs - performanceTime) / 1000
-}
-
-
-function gainMultiplier(frequencyHz: number, timeScale: number): number {
-    const crossingsPerPeriod = 2
-    const fuseHz = 20
-    const clickHz = crossingsPerPeriod * frequencyHz * timeScale
-    return Math.min(1, Math.sqrt(fuseHz / clickHz))
 }

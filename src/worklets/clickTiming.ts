@@ -5,4 +5,6 @@ export interface ClickTiming {
     timeScale: number
     audioTime: number
     phase: Phase
+    // The ball's own resonance, heard as the note of a single tick.
+    ringHz: number
 }

@@ -24,8 +24,9 @@ and traces a Lissajous curve through the box they span.
 The whole thing glows like phosphor on a CRT: fast passes are faint, slow turns burn bright,
 and every line fades the way a real beam does.
 
-Each body also clicks every time it crosses the center of its rail,
-so the rhythm of the figure is something you can listen to, not just watch.
+Each body also ticks with its own ring every time it crosses the center of its rail.
+Speed it up and the ticks fuse into a tone pitched by how fast they come, like a card in bicycle spokes,
+and the three bodies into a chord whose intervals are their frequency ratios - you hear the shape, not just watch it.
 
 ## Features
 
@@ -34,7 +35,7 @@ so the rhythm of the figure is something you can listen to, not just watch.
 - **Closed trail** - the full figure is traced once per period, `1 / gcd(fx, fy, fz)`, then held
 - **Orbit camera** - drag anywhere to turn the scene, wheel or pinch to zoom; the box, rails and trail turn with it
 - **Speed control** - logarithmic slider from `0.01x` to `200x`, independent of the frequencies
-- **Sample-accurate sound** - clicks are generated in an `AudioWorklet` from the same clock as the picture, timed between samples
+- **Sample-accurate sound** - ticks are generated in an `AudioWorklet` from the same clock as the picture, so each one lands as its body crosses the center
 - **Stays in sync** - a hidden tab freezes scene time, so picture and sound never drift apart
 
 ## Controls
@@ -42,7 +43,7 @@ so the rhythm of the figure is something you can listen to, not just watch.
 | Control | What it does |
 | --- | --- |
 | `trail` | Show or hide the traced figure |
-| `sound` | Mute or unmute the clicks (audio starts after your first click or key press - a browser rule) |
+| `sound` | Mute or unmute the ticks (audio starts after your first click, tap or key press - a browser rule) |
 | `x` `y` `z` | Frequency of each axis, in Hz; whole-number ratios give closed figures |
 | `speed` | How fast scene time runs relative to real time |
 | Drag | Rotate the camera |
@@ -62,10 +63,13 @@ closed-form factor `1 / (1 - exp(-period / decay))`, so the glow costs one perio
 The rails of the three bodies are solved exactly per point and painted as a single gradient.
 Halos go to a separate layer that shares one blur pass - the bloom.
 
-**Sound.** A small `AudioWorklet` counts center crossings - two per cycle - and emits an impulse
-at each one, split across two samples so its timing is not snapped to the sample grid.
-A band-pass filter around 2.5 kHz gives it a short ring. Above roughly 20 clicks per second the clicks
-fuse into a tone, and the gain is eased down so fast motion does not turn into noise.
+**Sound.** A small `AudioWorklet` counts center crossings - two per cycle - and strikes at each one,
+split across two samples so its timing is not snapped to the sample grid. A strike is a smoothed thump
+plus a short ring at the ball's own resonance (x, y and z form an A major triad), and its sign follows the
+direction the ball crosses in. Past about 20 ticks per second they fuse into a tone at `f * speed`,
+so the three balls play a chord with the intervals of their frequency ratios: `2 : 3 : 4` is a root,
+its fifth and its octave. The ring fades out as ticks fuse so it does not whistle, and the level eases
+down with the tick rate so faster motion does not get louder.
 
 ## Run it
 
