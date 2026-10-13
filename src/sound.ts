@@ -28,15 +28,15 @@ export function createSound(clock: Clock, lissajous: Lissajous): Sound {
     let playing = false
     let audible = false
 
-    let voicesReady: Promise<ClickVoice[]> | undefined
+    const voicesReady = createClickVoices(ctx, gain, clock, lissajous)
     const volume = 2
     const fadeSeconds = 0.02
 
     async function start(): Promise<void> {
-        voicesReady ??= createClickVoices(ctx, gain, clock, lissajous)
+        // Resumed before any await, while the gesture that allows audio is still current.
+        const running = ctx.resume()
         const voices = await voicesReady
-        if (!playing) return
-        await ctx.resume()
+        await running
         if (!playing) return
         // The audio clock only maps to real time once the context runs.
         for (const voice of voices) voice.sync()
@@ -72,11 +72,13 @@ export function createSound(clock: Clock, lissajous: Lissajous): Sound {
     function playOnFirstGesture(): void {
         playing = true
         const gesture = new AbortController()
+        // Kept until audio runs, since not every gesture is one the browser accepts to unlock it.
         const unlock = () => {
-            gesture.abort()
-            void start()
+            void start().finally(() => {
+                if (audible || !playing) gesture.abort()
+            })
         }
-        for (const type of ["pointerdown", "pointerup", "keydown"]) {
+        for (const type of ["keydown", "mousedown", "pointerup", "touchend"]) {
             document.addEventListener(type, unlock, { signal: gesture.signal })
         }
     }
@@ -87,7 +89,7 @@ export function createSound(clock: Clock, lissajous: Lissajous): Sound {
 
     // Voices not created yet read the scene when they are.
     function sync(): void {
-        void voicesReady?.then((voices) => {
+        void voicesReady.then((voices) => {
             for (const voice of voices) voice.sync()
         })
     }
