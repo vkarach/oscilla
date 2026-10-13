@@ -37,6 +37,8 @@ interface Layers {
     ctx: CanvasRenderingContext2D
     // Halos go here and share one blur pass, which is far cheaper than blurring every stroke.
     glow: CanvasRenderingContext2D
+    width: number
+    height: number
 }
 
 export interface Renderer {
@@ -58,7 +60,7 @@ export function createRenderer(surface: Surface): Renderer {
         const { ctx } = surface
         ctx.clearRect(0, 0, surface.width, surface.height)
         glow.clearRect(0, 0, surface.width, surface.height)
-        renderScene({ ctx, glow }, scene, theme, frame, camera)
+        renderScene({ ctx, glow, width: surface.width, height: surface.height }, scene, theme, frame, camera)
 
         ctx.save()
         ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -140,7 +142,8 @@ function renderLineGlow(layers: Layers, view: BodyView, frame: FrameTime): void 
     // Measured on screen, where the line may look shorter than it is in the world.
     const lengthPx = Math.hypot(to.x - from.x, to.y - from.y)
     const binPx = 3
-    const bins = Math.max(1, Math.ceil(lengthPx / binPx))
+    const maxBins = 512
+    const bins = Math.min(maxBins, Math.max(1, Math.ceil(lengthPx / binPx)))
 
     for (let i = 0; i < bins; i++) {
         const low = Math.asin(-1 + 2 * i / bins)
@@ -195,8 +198,10 @@ function renderPhosphor(layers: Layers, style: BeamStyle, beam: Beam, frame: Fra
     const span = Math.min(period, 8 * decay)
     const laps = 1 / (1 - Math.exp(-period / decay))
     const t = frame.simSeconds
+    // Every stroke has a fixed cost, so a long span gets longer bands rather than more of them.
+    const maxBands = 512
     // Bands sit on the time grid so each piece of the curve fades in place instead of sliding with the head.
-    const bandSeconds = 8 * dt
+    const bandSeconds = Math.max(8 * dt, span / maxBands)
 
     for (const target of [ctx, glow]) {
         target.save()
@@ -210,15 +215,16 @@ function renderPhosphor(layers: Layers, style: BeamStyle, beam: Beam, frame: Fra
     for (let k = Math.floor((t - span) / bandSeconds); k * bandSeconds < t; k++) {
         const fromT = Math.max(k * bandSeconds, t - span)
         const toT = Math.min((k + 1) * bandSeconds, t)
-        const length = pathLength(beam.pointAt, fromT, toT, dt)
+        const points = samplePath(beam.pointAt, fromT, toT, dt)
+        if (!onScreen(points, layers, style.haloWidth)) continue
         // Real seconds the beam spent per pixel of this band.
-        const energy = style.gain * (toT - fromT) / frame.timeScale / Math.max(length, 1e-6)
+        const energy = style.gain * (toT - fromT) / frame.timeScale / Math.max(polylineLength(points), 1e-6)
         const brightness = energy * laps * Math.exp(-(t - (fromT + toT) / 2) / decay)
         // The phosphor saturates smoothly instead of clipping into a flat block.
         const alpha = 1 - Math.exp(-brightness)
 
         const path = new Path2D()
-        tracePolyline(path, beam.pointAt, fromT, toT, dt)
+        tracePoints(path, points)
         glow.strokeStyle = rgba(style.haloColor, alpha * style.haloAlpha)
         glow.stroke(path)
         ctx.strokeStyle = rgba(style.color, alpha)
@@ -235,23 +241,33 @@ function spotVisibility(style: DotStyle, beam: Beam, frame: FrameTime, dt: numbe
     return size / (size + travelDistance(beam, t - frame.frameSimSeconds, t, dt))
 }
 
+// The smear only needs a rough distance, so a lap is sampled coarsely however fast the beam runs.
 function travelDistance(beam: Beam, fromT: number, toT: number, dt: number): number {
     const period = beam.periodSeconds
+    const maxLapSamples = 1024
+    const step = Math.max(dt, period / maxLapSamples)
     const laps = Math.floor((toT - fromT) / period)
-    const lapLength = laps > 0 ? pathLength(beam.pointAt, 0, period, dt) : 0
-    return laps * lapLength + pathLength(beam.pointAt, fromT + laps * period, toT, dt)
+    const lapLength = laps > 0 ? polylineLength(samplePath(beam.pointAt, 0, period, step)) : 0
+    return laps * lapLength + polylineLength(samplePath(beam.pointAt, fromT + laps * period, toT, step))
 }
 
-function pathLength(pointAt: PointAt, fromT: number, toT: number, dt: number): number {
+function polylineLength(points: Point[]): number {
     let length = 0
-    let prev = pointAt(fromT)
-    for (let k = Math.floor(fromT / dt) + 1; k * dt < toT; k++) {
-        const p = pointAt(k * dt)
-        length += Math.hypot(p.x - prev.x, p.y - prev.y)
-        prev = p
+    for (let i = 1; i < points.length; i++) {
+        length += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y)
     }
-    const end = pointAt(toT)
-    return length + Math.hypot(end.x - prev.x, end.y - prev.y)
+    return length
+}
+
+function onScreen(points: Point[], view: { width: number, height: number }, marginPx: number): boolean {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    for (const p of points) {
+        minX = Math.min(minX, p.x)
+        minY = Math.min(minY, p.y)
+        maxX = Math.max(maxX, p.x)
+        maxY = Math.max(maxY, p.y)
+    }
+    return maxX >= -marginPx && maxY >= -marginPx && minX <= view.width + marginPx && minY <= view.height + marginPx
 }
 
 // A small cross through the rail center, built in the world so it turns with the scene like a solid part.
@@ -286,15 +302,22 @@ export function renderTrailSegment(ctx: CanvasRenderingContext2D, lissajous: Lis
 }
 
 function tracePolyline(ctx: CanvasPath, pointAt: PointAt, fromT: number, toT: number, dt: number): void {
-    const start = pointAt(fromT)
-    ctx.moveTo(start.x, start.y)
+    tracePoints(ctx, samplePath(pointAt, fromT, toT, dt))
+}
+
+function samplePath(pointAt: PointAt, fromT: number, toT: number, dt: number): Point[] {
+    const points = [pointAt(fromT)]
     // Samples sit on a fixed time grid so a moving window does not make the curve shimmer.
     for (let k = Math.floor(fromT / dt) + 1; k * dt < toT; k++) {
-        const p = pointAt(k * dt)
-        ctx.lineTo(p.x, p.y)
+        points.push(pointAt(k * dt))
     }
-    const end = pointAt(toT)
-    ctx.lineTo(end.x, end.y)
+    points.push(pointAt(toT))
+    return points
+}
+
+function tracePoints(ctx: CanvasPath, points: Point[]): void {
+    ctx.moveTo(points[0].x, points[0].y)
+    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y)
 }
 
 function strokeLine(ctx: CanvasRenderingContext2D, style: LineStyle, tracePath: (ctx: CanvasRenderingContext2D) => void): void {

@@ -30,8 +30,9 @@ function maxSpeed(o: Oscillation): number {
     return 2 * Math.PI * o.frequencyHz * o.amplitude
 }
 
+// Zooming grows curve radii with the scale, so steps growing with its square root keep the chord error on screen fixed.
 export function trailTimeStep(lissajous: Lissajous, stepPx: number, pixelsPerUnit: number): number {
-    return stepPx / (pixelsPerUnit * Math.hypot(...Object.values(lissajous).map(maxSpeed)))
+    return stepPx / (Math.sqrt(pixelsPerUnit) * Math.hypot(...Object.values(lissajous).map(maxSpeed)))
 }
 
 function gcd(a: number, b: number): number {

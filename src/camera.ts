@@ -17,18 +17,27 @@ export function createCamera(yaw: number, pitch: number, fitRadius: number): Cam
     let center: Point = { x: 0, y: 0 }
     let fitScale = 1
     let zoomLevel = 1
+    // Cached since project runs for every sample of every curve each frame.
+    let cosYaw = Math.cos(yaw)
+    let sinYaw = Math.sin(yaw)
+    let cosPitch = Math.cos(pitch)
+    let sinPitch = Math.sin(pitch)
 
     function project(p: Point3): Point {
         const scale = pixelsPerUnit()
-        const x = p.x * Math.cos(yaw) + p.z * Math.sin(yaw)
-        const z = -p.x * Math.sin(yaw) + p.z * Math.cos(yaw)
-        const y = p.y * Math.cos(pitch) - z * Math.sin(pitch)
+        const x = p.x * cosYaw + p.z * sinYaw
+        const z = -p.x * sinYaw + p.z * cosYaw
+        const y = p.y * cosPitch - z * sinPitch
         return { x: center.x + scale * x, y: center.y + scale * y }
     }
 
     function rotate(yawDelta: number, pitchDelta: number): void {
         yaw += yawDelta
         pitch += pitchDelta
+        cosYaw = Math.cos(yaw)
+        sinYaw = Math.sin(yaw)
+        cosPitch = Math.cos(pitch)
+        sinPitch = Math.sin(pitch)
         notifyChange()
     }
 
