@@ -85,6 +85,7 @@ function createFhzInput(axis: Axis, initialHz: number, onChange: (fHz: number) =
     const field = createField(axis, `var(--axis-${axis})`)
     const input = document.createElement("input")
     input.type = "number"
+    input.inputMode = "numeric"
     input.required = true
     input.min = "1"
     input.value = String(initialHz)

@@ -21,6 +21,11 @@ export function lissajousCorners(lissajous: Lissajous): Point3[] {
     }))
 }
 
+// Distance from the world origin to the farthest corner, which bounds the figure and its rails from every view.
+export function lissajousRadius(lissajous: Lissajous): number {
+    return Math.max(...lissajousCorners(lissajous).map((p) => Math.hypot(p.x, p.y, p.z)))
+}
+
 function maxSpeed(o: Oscillation): number {
     return 2 * Math.PI * o.frequencyHz * o.amplitude
 }

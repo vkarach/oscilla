@@ -8,6 +8,7 @@ import { createClock } from "./clock";
 import { createSound } from "./sound";
 import { applyThemeVariables, createTheme } from "./theme";
 import { createCamera, dragToRotate } from "./camera";
+import { lissajousRadius } from "./lissajous";
 
 function getRootElement(): HTMLDivElement {
     const element = document.querySelector<HTMLDivElement>("#app");
@@ -22,7 +23,7 @@ const scene = createScene()
 const theme = createTheme()
 app.style.background = theme.background
 applyThemeVariables(app, theme)
-const camera = createCamera(0.6, -0.4)
+const camera = createCamera(0.6, -0.4, lissajousRadius(scene.lissajous))
 const trail = createTrail(app, scene.lissajous, theme, camera)
 const surface = createSurface(app);
 const renderer = createRenderer(surface)
