@@ -3,6 +3,8 @@ import type { Point, Point3 } from "./geometry";
 export interface Camera {
     project(p: Point3): Point
     rotate(yawDelta: number, pitchDelta: number): void
+    zoom(factor: number): void
+    pixelsPerUnit(): number
     setViewport(width: number, height: number): void
     onChange(callback: () => void): void
 }
@@ -10,10 +12,14 @@ export interface Camera {
 // Orbits the world origin and drops depth, so the origin lands in the middle of the viewport.
 export function createCamera(yaw: number, pitch: number, fitRadius: number): Camera {
     const marginPx = 24
+    const minZoom = 0.5
+    const maxZoom = 10
     let center: Point = { x: 0, y: 0 }
-    let scale = 1
+    let fitScale = 1
+    let zoomLevel = 1
 
     function project(p: Point3): Point {
+        const scale = pixelsPerUnit()
         const x = p.x * Math.cos(yaw) + p.z * Math.sin(yaw)
         const z = -p.x * Math.sin(yaw) + p.z * Math.cos(yaw)
         const y = p.y * Math.cos(pitch) - z * Math.sin(pitch)
@@ -26,10 +32,19 @@ export function createCamera(yaw: number, pitch: number, fitRadius: number): Cam
         notifyChange()
     }
 
+    function zoom(factor: number): void {
+        zoomLevel = Math.min(maxZoom, Math.max(minZoom, zoomLevel * factor))
+        notifyChange()
+    }
+
+    function pixelsPerUnit(): number {
+        return fitScale * zoomLevel
+    }
+
     function setViewport(width: number, height: number): void {
         center = { x: width / 2, y: height / 2 }
         // Shrinks only when a sphere of fitRadius would leave the viewport, so large screens keep 1 px per unit.
-        scale = Math.min(1, Math.max(0, Math.min(width, height) / 2 - marginPx) / fitRadius)
+        fitScale = Math.min(1, Math.max(0, Math.min(width, height) / 2 - marginPx) / fitRadius)
         notifyChange()
     }
 
@@ -42,27 +57,53 @@ export function createCamera(yaw: number, pitch: number, fitRadius: number): Cam
         for (const callback of changeListeners) callback()
     }
 
-    return { project, rotate, setViewport, onChange }
+    return { project, rotate, zoom, pixelsPerUnit, setViewport, onChange }
 }
 
-export function dragToRotate(element: HTMLElement, camera: Camera): void {
+// One pointer turns the view, two pinch to zoom, and the wheel zooms too.
+export function orbitControls(element: HTMLElement, camera: Camera): void {
     const radiansPerPx = 0.01
+    const zoomPerWheelPx = 0.002
     // Deltas come from client coordinates since iOS Safari leaves movementX undefined for touch.
-    let drag: { pointerId: number, x: number, y: number } | undefined
+    const pointers = new Map<number, Point>()
     element.style.touchAction = "none"
     element.addEventListener("pointerdown", (event) => {
-        if (drag) return
-        drag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY }
+        pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
         element.setPointerCapture(event.pointerId)
     })
     element.addEventListener("pointermove", (event) => {
-        if (event.pointerId !== drag?.pointerId) return
-        camera.rotate((event.clientX - drag.x) * radiansPerPx, -(event.clientY - drag.y) * radiansPerPx)
-        drag.x = event.clientX
-        drag.y = event.clientY
+        const last = pointers.get(event.pointerId)
+        if (!last) return
+        const next = { x: event.clientX, y: event.clientY }
+        if (pointers.size === 1) {
+            camera.rotate((next.x - last.x) * radiansPerPx, -(next.y - last.y) * radiansPerPx)
+        } else if (pointers.size === 2) {
+            const other = [...pointers].find(([id]) => id !== event.pointerId)?.[1]
+            const lastSpan = other && distance(other, last)
+            if (other && lastSpan) camera.zoom(distance(other, next) / lastSpan)
+        }
+        pointers.set(event.pointerId, next)
     })
-    // Fires after both pointerup and pointercancel, so a drag the browser takes over ends too.
+    // Fires after both pointerup and pointercancel, so a gesture the browser takes over ends too.
     element.addEventListener("lostpointercapture", (event) => {
-        if (event.pointerId === drag?.pointerId) drag = undefined
+        pointers.delete(event.pointerId)
     })
+    element.addEventListener("wheel", (event) => {
+        event.preventDefault()
+        camera.zoom(Math.exp(-wheelPixels(event, element) * zoomPerWheelPx))
+    }, { passive: false })
+}
+
+function distance(a: Point, b: Point): number {
+    return Math.hypot(a.x - b.x, a.y - b.y)
+}
+
+// Some browsers report wheels in lines or pages, so every mode is brought to pixels.
+function wheelPixels(event: WheelEvent, element: HTMLElement): number {
+    const lineHeightPx = 16
+    switch (event.deltaMode) {
+        case WheelEvent.DOM_DELTA_LINE: return event.deltaY * lineHeightPx
+        case WheelEvent.DOM_DELTA_PAGE: return event.deltaY * element.clientHeight
+        default: return event.deltaY
+    }
 }

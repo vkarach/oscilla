@@ -7,7 +7,7 @@ import { createTrail } from "./trail";
 import { createClock } from "./clock";
 import { createSound } from "./sound";
 import { applyThemeVariables, createTheme } from "./theme";
-import { createCamera, dragToRotate } from "./camera";
+import { createCamera, orbitControls } from "./camera";
 import { lissajousRadius } from "./lissajous";
 
 function getRootElement(): HTMLDivElement {
@@ -37,7 +37,7 @@ scene.onChange(trail.restart)
 scene.onChange(sound.sync)
 camera.onChange(trail.redraw)
 surface.onResize(() => camera.setViewport(surface.width, surface.height))
-dragToRotate(surface.ctx.canvas, camera)
+orbitControls(surface.ctx.canvas, camera)
 
 const controls = createControls(
     app,

@@ -30,8 +30,8 @@ function maxSpeed(o: Oscillation): number {
     return 2 * Math.PI * o.frequencyHz * o.amplitude
 }
 
-export function trailTimeStep(lissajous: Lissajous, stepPx: number): number {
-    return stepPx / Math.hypot(...Object.values(lissajous).map(maxSpeed))
+export function trailTimeStep(lissajous: Lissajous, stepPx: number, pixelsPerUnit: number): number {
+    return stepPx / (pixelsPerUnit * Math.hypot(...Object.values(lissajous).map(maxSpeed)))
 }
 
 function gcd(a: number, b: number): number {

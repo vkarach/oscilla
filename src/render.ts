@@ -75,7 +75,7 @@ function renderScene(layers: Layers, scene: Scene, theme: Theme, frame: FrameTim
     const { ctx } = layers
     const t = frame.simSeconds
     const pPoint = camera.project(lissajousPoint(scene.lissajous, t))
-    const dt = trailTimeStep(scene.lissajous, 2)
+    const dt = trailTimeStep(scene.lissajous, 2, camera.pixelsPerUnit())
 
     const views = scene.bodies.map((body): BodyView => {
         const { oscillation } = body

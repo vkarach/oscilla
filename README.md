@@ -32,7 +32,7 @@ so the rhythm of the figure is something you can listen to, not just watch.
 - **Phosphor beam** - brightness comes from the energy the beam leaves on each pixel, decays exponentially and saturates smoothly instead of clipping
 - **Live retuning** - change any axis frequency on the fly; the phase stays continuous, so the figure morphs instead of jumping
 - **Closed trail** - the full figure is traced once per period, `1 / gcd(fx, fy, fz)`, then held
-- **Orbit camera** - drag anywhere to turn the scene; the box, rails and trail turn with it
+- **Orbit camera** - drag anywhere to turn the scene, wheel or pinch to zoom; the box, rails and trail turn with it
 - **Speed control** - logarithmic slider from `0.01x` to `200x`, independent of the frequencies
 - **Sample-accurate sound** - clicks are generated in an `AudioWorklet` from the same clock as the picture, timed between samples
 - **Stays in sync** - a hidden tab freezes scene time, so picture and sound never drift apart
@@ -46,6 +46,7 @@ so the rhythm of the figure is something you can listen to, not just watch.
 | `x` `y` `z` | Frequency of each axis, in Hz; whole-number ratios give closed figures |
 | `speed` | How fast scene time runs relative to real time |
 | Drag | Rotate the camera |
+| Wheel / pinch | Zoom |
 
 Try `3 : 2 : 6`, `1 : 2 : 3` or `3 : 4 : 5` for a start.
 
@@ -90,7 +91,7 @@ src/
   phase.ts          phase math shared with the audio worklet
   lissajous.ts      combined point, bounding box, period and sampling step
   clock.ts          scene time, speed and pause
-  camera.ts         orbit projection and drag-to-rotate
+  camera.ts         orbit projection, drag to rotate, wheel and pinch to zoom
   render.ts         phosphor beam, rails, bloom
   trail.ts          one-period trail on its own canvas
   sound.ts          audio graph and clock-to-audio-time sync
