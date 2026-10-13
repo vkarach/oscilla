@@ -1,8 +1,9 @@
-import { createSurface } from "./canvas";
+import { createLayer, createSurface } from "./canvas";
 import { renderTrailSegment } from "./render";
 import { trailPeriod, trailTimeStep, type Lissajous } from "./lissajous";
 import type { Theme } from "./theme";
 import type { Camera } from "./camera";
+import { createBloom } from "./bloom";
 
 export interface Trail {
     toggle(): void
@@ -13,6 +14,8 @@ export interface Trail {
 
 export function createTrail(parent: HTMLElement, lissajous: Lissajous, theme: Theme, camera: Camera): Trail {
     const surface = createSurface(parent)
+    const glow = createLayer(surface)
+    const bloom = createBloom()
     let enabled = true
     let justEnabled = true
     let complete = false
@@ -34,9 +37,11 @@ export function createTrail(parent: HTMLElement, lissajous: Lissajous, theme: Th
         }
         if (enabled && !complete) {
             surface.ctx.clearRect(0, 0, surface.width, surface.height)
+            glow.clearRect(0, 0, surface.width, surface.height)
             const endT = Math.min(timeSeconds, startSec + periodSec)
             const dt = trailTimeStep(lissajous, 1.5, camera.pixelsPerUnit())
-            renderTrailSegment(surface.ctx, lissajous, theme.trail, startSec, endT, dt, camera)
+            renderTrailSegment(surface.ctx, glow, lissajous, theme.trail, startSec, endT, dt, camera)
+            bloom.apply(glow.canvas, surface.ctx, theme.trail.glowBlur / 2 * surface.ctx.canvas.width / surface.width)
             complete = endT < timeSeconds
         }
     }

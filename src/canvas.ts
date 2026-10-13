@@ -13,6 +13,19 @@ export function context2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
     return ctx;
 }
 
+// An offscreen canvas that keeps the size and transform of a surface, for drawing a layer to composite onto it.
+export function createLayer(surface: Surface): CanvasRenderingContext2D {
+    const layer = context2d(document.createElement("canvas"))
+    function fit(): void {
+        layer.canvas.width = surface.ctx.canvas.width
+        layer.canvas.height = surface.ctx.canvas.height
+        layer.setTransform(surface.ctx.getTransform())
+    }
+    fit()
+    surface.onResize(fit)
+    return layer
+}
+
 export function createSurface(parent: HTMLElement): Surface {
     const canvas = document.createElement("canvas");
     parent.append(canvas);

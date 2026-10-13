@@ -15,7 +15,7 @@ export interface GlowStyle {
 
 export interface DotStyle {
     color: string
-    coreColor: string
+    coreColor: Rgb
     radius: number
     glowRadius: number
 }
@@ -98,7 +98,7 @@ export function createTheme(): Theme {
                 path: { color: "rgba(255, 140, 150, 0.25)", width: 1 },
                 tick: { color: "rgba(255, 140, 150, 0.6)", width: 1.5 },
                 ball: {
-                    coreColor: "rgb(255, 250, 248)",
+                    coreColor: [255, 250, 248],
                     color: "rgba(255, 120, 130, 0.8)",
                     radius: 7,
                     glowRadius: 26,
@@ -109,7 +109,7 @@ export function createTheme(): Theme {
                 path: { color: "rgba(255, 160, 60, 0.25)", width: 1 },
                 tick: { color: "rgba(255, 160, 60, 0.6)", width: 1.5 },
                 ball: {
-                    coreColor: "rgb(255, 248, 225)",
+                    coreColor: [255, 248, 225],
                     color: "rgba(255, 150, 30, 0.8)",
                     radius: 7,
                     glowRadius: 26,
@@ -120,7 +120,7 @@ export function createTheme(): Theme {
                 path: { color: "rgba(190, 140, 255, 0.25)", width: 1 },
                 tick: { color: "rgba(190, 140, 255, 0.6)", width: 1.5 },
                 ball: {
-                    coreColor: "rgb(250, 245, 255)",
+                    coreColor: [250, 245, 255],
                     color: "rgba(170, 110, 255, 0.8)",
                     radius: 7,
                     glowRadius: 26,
@@ -130,7 +130,7 @@ export function createTheme(): Theme {
         },
         marker: {
             dot: {
-                coreColor: "rgb(255, 245, 235)",
+                coreColor: [255, 245, 235],
                 color: "rgba(255, 140, 90, 0.8)",
                 radius: 6,
                 glowRadius: 24,

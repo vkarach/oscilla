@@ -1,4 +1,4 @@
-import { context2d, type Surface } from "./canvas";
+import { createLayer, type Surface } from "./canvas";
 import type { Axis, Point } from "./geometry";
 
 import { pathStart, pathEnd, type Oscillation, computePosition} from "./oscillation"
@@ -7,6 +7,7 @@ import { lissajousCorners, lissajousPoint, trailPeriod, trailTimeStep, type Liss
 import type { Scene } from "./scene";
 import type { BeamStyle, BodyStyle, DotStyle, GlowStyle, GuideStyle, LineStyle, MarkerStyle, Rgb, Theme } from "./theme";
 import type { Camera } from "./camera"
+import { createBloom } from "./bloom"
 
 type PointAt = (timeSeconds: number) => Point
 
@@ -46,28 +47,15 @@ export interface Renderer {
 }
 
 export function createRenderer(surface: Surface): Renderer {
-    const glowCanvas = document.createElement("canvas")
-    const glow = context2d(glowCanvas)
-    function fitGlow(): void {
-        glowCanvas.width = surface.ctx.canvas.width
-        glowCanvas.height = surface.ctx.canvas.height
-        glow.setTransform(surface.ctx.getTransform())
-    }
-    fitGlow()
-    surface.onResize(fitGlow)
+    const glow = createLayer(surface)
+    const bloom = createBloom()
 
     function render(scene: Scene, theme: Theme, frame: FrameTime, camera: Camera): void {
         const { ctx } = surface
         ctx.clearRect(0, 0, surface.width, surface.height)
         glow.clearRect(0, 0, surface.width, surface.height)
         renderScene({ ctx, glow, width: surface.width, height: surface.height }, scene, theme, frame, camera)
-
-        ctx.save()
-        ctx.setTransform(1, 0, 0, 1, 0, 0)
-        ctx.globalCompositeOperation = "lighter"
-        ctx.filter = `blur(${theme.bloomBlur * ctx.canvas.width / surface.width}px)`
-        ctx.drawImage(glowCanvas, 0, 0)
-        ctx.restore()
+        bloom.apply(glow.canvas, ctx, theme.bloomBlur * ctx.canvas.width / surface.width)
     }
 
     return { render }
@@ -297,8 +285,20 @@ function renderGuide(ctx: CanvasRenderingContext2D, style: GuideStyle, from: Poi
     ctx.restore()
 }
 
-export function renderTrailSegment(ctx: CanvasRenderingContext2D, lissajous: Lissajous, style: GlowStyle, fromT: number, toT: number, dt: number, camera: Camera) {
-    strokeGlow(ctx, style, (ctx) => tracePolyline(ctx, (t) => camera.project(lissajousPoint(lissajous, t)), fromT, toT, dt))
+// The halo goes to glow, which the caller blurs, so no stroke here needs a filter.
+export function renderTrailSegment(ctx: CanvasRenderingContext2D, glow: CanvasRenderingContext2D, lissajous: Lissajous, style: GlowStyle, fromT: number, toT: number, dt: number, camera: Camera) {
+    const path = new Path2D()
+    tracePolyline(path, (t) => camera.project(lissajousPoint(lissajous, t)), fromT, toT, dt)
+    for (const [target, color, width] of [[glow, style.color, style.glowWidth], [ctx, style.coreColor, style.width]] as const) {
+        target.save()
+        target.lineCap = "round"
+        target.lineJoin = "round"
+        target.globalCompositeOperation = "lighter"
+        target.strokeStyle = color
+        target.lineWidth = width
+        target.stroke(path)
+        target.restore()
+    }
 }
 
 function tracePolyline(ctx: CanvasPath, pointAt: PointAt, fromT: number, toT: number, dt: number): void {
@@ -332,29 +332,6 @@ function strokeLine(ctx: CanvasRenderingContext2D, style: LineStyle, tracePath: 
     ctx.restore()
 }
 
-function strokeGlow(ctx: CanvasRenderingContext2D, style: GlowStyle, tracePath: (ctx: CanvasRenderingContext2D) => void): void {
-    ctx.save()
-    ctx.lineCap = "round"
-    ctx.lineJoin = "round"
-    ctx.globalCompositeOperation = "lighter"
-
-    ctx.beginPath()
-    tracePath(ctx)
-
-    ctx.save()
-    ctx.strokeStyle = style.color
-    ctx.lineWidth = style.glowWidth
-    ctx.filter = `blur(${style.glowBlur / 2}px)`
-    ctx.stroke()
-    ctx.restore()
-
-    ctx.strokeStyle = style.coreColor
-    ctx.lineWidth = style.width
-    ctx.stroke()
-
-    ctx.restore()
-}
-
 function fillGlowDot(ctx: CanvasRenderingContext2D, style: DotStyle, point: Point, alpha: number): void {
     const { x, y } = point
     ctx.save()
@@ -369,10 +346,16 @@ function fillGlowDot(ctx: CanvasRenderingContext2D, style: DotStyle, point: Poin
     ctx.arc(x, y, style.glowRadius, 0, 2 * Math.PI)
     ctx.fill()
 
-    ctx.fillStyle = style.coreColor
-    ctx.filter = `blur(${style.radius / 3}px)`
+    // A soft edge shaped like a small blur, drawn as a gradient since ctx.filter is slow in Firefox.
+    const blur = style.radius / 3
+    const outer = style.radius + 2 * blur
+    const core = ctx.createRadialGradient(x, y, 0, x, y, outer)
+    core.addColorStop((style.radius - blur) / outer, rgba(style.coreColor, 1))
+    core.addColorStop(style.radius / outer, rgba(style.coreColor, 0.5))
+    core.addColorStop(1, rgba(style.coreColor, 0))
+    ctx.fillStyle = core
     ctx.beginPath()
-    ctx.arc(x, y, style.radius, 0, 2 * Math.PI)
+    ctx.arc(x, y, outer, 0, 2 * Math.PI)
     ctx.fill()
 
     ctx.restore()
